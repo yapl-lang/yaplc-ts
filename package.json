@@ -1,0 +1,18 @@
+{
+	"name": "yaplc",
+	"version": "0.0.1",
+	"description": "YAPL compiler",
+	"main": "out/src/main.js",
+	"scripts": {
+		"build": "tsc -p",
+		"watch": "tsc --watch -p tsconfig.json",
+		"test": "node out/test/test.js"
+	},
+	"author": "YAPL",
+	"license": "GPL-3.0",
+	"devDependencies": {
+		"@types/node": "^8.0.20",
+		"typescript": "^2.4.2"
+	},
+	"dependencies": {}
+}
