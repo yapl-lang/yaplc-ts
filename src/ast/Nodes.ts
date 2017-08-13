@@ -14,15 +14,27 @@ export class NodeUse extends BaseNode<NodeUse> {
 	alias: string;
 }
 
-export class NodeTypeReference extends BaseNode<NodeTypeReference> {
-	type = 'typeref';
+export class NodeTypeName extends BaseNode<NodeTypeName> {
+	type = 'typename';
 
 	name: string;
 }
 
+export class NodeIdentifier extends BaseNode<NodeIdentifier> {
+	type = 'id';
+
+	name: string;
+}
+
+export class NodeTypeReference extends BaseNode<NodeTypeReference> {
+	type = 'typeref';
+
+	name: NodeTypeName;
+}
+
 
 export abstract class BaseNodeVal<T> extends BaseNode<T> {
-	name: string;
+	name: NodeIdentifier;
 	initializer: NodeExpression | null;
 }
 
@@ -38,14 +50,16 @@ export class NodeVar extends BaseNodeVal<NodeVar> {
 export class NodeFunction extends BaseNode<NodeFunction> {
 	type = 'fun';
 
+	name: NodeIdentifier;
 	arguments: NodeFunctionArgument[];
+	returns: NodeTypeReference[];
 	body: NodeExpression[];
 }
 
 export class NodeFunctionArgument extends BaseNode<NodeFunctionArgument> {
 	type = 'arg';
 
-	name: string;
+	name: NodeIdentifier;
 	targetType: NodeTypeReference | null;
 }
 

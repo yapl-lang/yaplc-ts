@@ -1,17 +1,19 @@
+import StringUtil from './util/String';
+
 export default class CodePosition {
 	readonly code: string;
 	readonly offset: number;
 	private cachedLine: number | null;
 	private cachedColumn: number | null;
 
-	get line() : number {
+	get line(): number {
 		if (this.cachedLine === null) {
 			this.cacheLineAndColumn();
 		}
 		return <number>this.cachedLine;
 	}
 
-	get column() : number {
+	get column(): number {
 		if (this.cachedColumn === null) {
 			this.cacheLineAndColumn();
 		}
@@ -23,6 +25,10 @@ export default class CodePosition {
 		this.offset = offset;
 		this.cachedLine = line;
 		this.cachedColumn = column;
+	}
+
+	public getLine() {
+		return StringUtil.getLineOn(this.code, this.offset);
 	}
 
 	private cacheLineAndColumn() {

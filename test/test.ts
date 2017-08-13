@@ -5,9 +5,9 @@ use stdout
 # Hello, \\
   My comment
 
-fun main(args: string) {
+fun main args: string: string {
 	print 'hello'
-    print 'hello'
+	print 'hello'
 }
 `;
 

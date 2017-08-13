@@ -22,6 +22,8 @@ import Node from './ast/Node';
 import {
 	NodePackage,
 	NodeUse,
+	NodeIdentifier,
+	NodeTypeName,
 	NodeTypeReference,
 	NodeVal,
 	NodeVar,
@@ -113,13 +115,19 @@ export default class Parser {
 		before: TokenEqualiter,
 		delimiter: TokenEqualiter,
 		after: TokenEqualiter = before,
-		optional: boolean = false): T[] {
+		optional: boolean = false,
+		optionalBeforeAndAfter: boolean = false): T[] {
 		const result: T[] = [];
+		let needAfter = true;
 		if (!optional) {
 			this.skip(before.type, before.value);
 		} else {
 			if (!this.take(before.type, before.value)) {
-				return result;
+				if (optionalBeforeAndAfter) {
+					needAfter = false;
+				} else {
+					return result;
+				}
 			}
 		}
 		do {
@@ -129,7 +137,9 @@ export default class Parser {
 			}
 			result.push(node);
 		} while (this.take(delimiter.type, delimiter.value));
-		this.skip(after.type, after.value);
+		if (needAfter) {
+			this.skip(after.type, after.value);
+		}
 		return result;
 	}
 
@@ -155,10 +165,32 @@ export default class Parser {
 		return elements.join('.');
 	}
 
-	protected parseTypeRef(): NodeTypeReference | null {
-		const type = <string>(this.take(TokenIdentifier, null, true, 'value') || this.take(TokenKeyword, [
+	protected parseIdentifier(): NodeIdentifier | null {
+		const name = <string>(this.take(TokenIdentifier, null, true, 'value') || this.take(TokenKeyword, [
+			// TODO: Add keywords that are identifiers
+		], true, 'value'));
+		if (name !== null) {
+			return new NodeIdentifier({
+				name: name,
+			});
+		}
+		return null;
+	}
+
+	protected parseTypeName(): NodeTypeName | null {
+		const name = <string>(this.take(TokenIdentifier, null, true, 'value') || this.take(TokenKeyword, [
 			// TODO: Add keywords that are types
 		], true, 'value'));
+		if (name !== null) {
+			return new NodeTypeName({
+				name: name,
+			});
+		}
+		return null;
+	}
+
+	protected parseTypeRef(): NodeTypeReference | null {
+		const type = this.doParse(this.parseTypeName);
 		if (type !== null) {
 			// TODO: Parse things like generics(templates) and arrays
 			return new NodeTypeReference({
@@ -197,7 +229,7 @@ export default class Parser {
 		} else {
 			return null;
 		}
-		const name = <string>this.skip(TokenIdentifier, null, true, 'value');
+		const name = <NodeIdentifier>this.doParse(this.parseIdentifier);
 		// TODO: Parse type
 		if (this.take(TokenOperator, '=')) {
 			// TODO: Parse initializer as an expression
@@ -210,11 +242,25 @@ export default class Parser {
 
 	protected parseFun(): NodeFunction | null {
 		if (this.take(TokenKeyword, 'fun')) {
-			const name = this.skip(TokenIdentifier, null, true, 'value');
+			let name = this.doParse(this.parseIdentifier);
+			if (name === null) {
+				this.error('Function name expected');
+				name = new NodeIdentifier({
+					name: ''
+				});
+			}
 			const args = this.delimited(this.parseFunArgument,
-				{type: TokenPunctuation, value: '('}, {type: TokenPunctuation, value: ','}, {type: TokenPunctuation, value: ')'}, true);
+				{type: TokenPunctuation, value: '('},
+				{type: TokenPunctuation, value: ','},
+				{type: TokenPunctuation, value: ')'}, true, true);
+			const returns = this.take(TokenOperator, ':') ? this.delimited(this.parseTypeRef,
+				{type: TokenPunctuation, value: '('},
+				{type: TokenPunctuation, value: ','},
+				{type: TokenPunctuation, value: ')'}, true, true) : [];
 			return new NodeFunction({
+				name: name,
 				arguments: args,
+				returns: returns,
 				//body: this.enterBlock(),
 			})
 		}
@@ -222,7 +268,7 @@ export default class Parser {
 	}
 
 	protected parseFunArgument(): NodeFunctionArgument | null {
-		const name = <string>this.take(TokenIdentifier, null, true, 'value');
+		const name = this.doParse(this.parseIdentifier);
 		if (name !== null) {
 			const type = this.take(TokenOperator, ':', true, 'value') ? this.doParse(this.parseTypeRef) : null;
 			return new NodeFunctionArgument({
@@ -234,7 +280,11 @@ export default class Parser {
 	}
 
 	public parse(): NodePackage {
-		return <NodePackage>this.doParse(this.parsePackage);
+		const pack = <NodePackage>this.doParse(this.parsePackage);
+		if (!this.eof()) {
+			this.error('Unexpected');
+		}
+		return pack;
 	}
 
 	public eof(): boolean {
