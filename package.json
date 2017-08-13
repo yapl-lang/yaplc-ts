@@ -2,7 +2,7 @@
 	"name": "yaplc",
 	"version": "0.0.1",
 	"description": "YAPL compiler",
-	"main": "out/src/main.js",
+	"main": "out/test/test.js",
 	"scripts": {
 		"build": "tsc -p tsconfig.json",
 		"watch": "tsc --watch -p tsconfig.json",

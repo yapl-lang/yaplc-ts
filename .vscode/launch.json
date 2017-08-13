@@ -15,7 +15,11 @@
                 "NODE_ENV": "development"
             },
 			"console": "internalConsole",
-            "sourceMaps": true
+			"sourceMaps": true,
+			"outFiles": [
+				"${workspaceRoot}/out/**/*"
+			],
+			"restart": true
 		}
 	]
 }
