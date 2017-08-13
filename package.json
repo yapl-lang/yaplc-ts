@@ -4,7 +4,7 @@
 	"description": "YAPL compiler",
 	"main": "out/src/main.js",
 	"scripts": {
-		"build": "tsc -p",
+		"build": "tsc -p tsconfig.json",
 		"watch": "tsc --watch -p tsconfig.json",
 		"test": "node out/test/test.js"
 	},
