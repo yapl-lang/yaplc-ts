@@ -295,7 +295,7 @@ export default class Parser {
 		if (tokens.length === 0) {
 			tokens.push(this.input.peek());
 		}
-		const begin = tokens[0].begin, end = tokens[tokens.length - 1].end;
+		const begin = tokens[0].begin, end = tokens[tokens.length - 1].end.relative(-1);
 		const error = new SyntaxError(message, begin, end);
 		this.errors && this.errors.error(error);
 		return error;

@@ -28,13 +28,13 @@ export default abstract class PositionalError extends Error {
 			const {line} = this.begin.getLine();
 			result += StringUtil.padOf(line, this.begin.column) + '|\n';
 			result += line + '\n';
-			result += StringUtil.padOf(line, (<CodePosition>this.end).column - 1) + '|\n';
+			result += StringUtil.padOf(line, (<CodePosition>this.end).column) + '|\n';
 		} else {
 			const {line: startLine, start} = this.begin.getLine();
 			const {line: endLine, end} = (<CodePosition>this.end).getLine();
 			result += StringUtil.padOf(startLine, this.begin.column) + '|\n';
 			result += this.begin.code.substring(start, end) + '\n';
-			result += StringUtil.padOf(endLine, (<CodePosition>this.end).column - 1) + '|\n';
+			result += StringUtil.padOf(endLine, (<CodePosition>this.end).column) + '|\n';
 		}
 		return `${result}${super.toString()} at ${this.begin}${this.isPoint ? '' : `-${this.end}`}`;
 	}
