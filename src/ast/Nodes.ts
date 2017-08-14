@@ -89,3 +89,15 @@ export class NodeReference extends NodeExpression<NodeReference> {
 
 	name: NodeIdentifier | null;
 }
+
+export class NodeNumber extends NodeExpression<NodeNumber> {
+	type = 'num';
+
+	value: string;
+}
+
+export class NodeString extends NodeExpression<NodeString> {
+	type = 'str';
+
+	value: string;
+}

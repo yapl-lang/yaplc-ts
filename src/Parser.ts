@@ -35,6 +35,8 @@ import {
 	NodeCall,
 	NodeCallArgument,
 	NodeReference,
+	NodeNumber,
+	NodeString,
 } from './ast/Nodes';
 
 class TokenEqualiter {
@@ -86,7 +88,7 @@ export default class Parser {
 		}
 		const tok = <T>this.input.next(skipWhitespace);
 		if (field) {
-			return (<any>tok)[field];
+			return (<any>tok)[field] || tok;
 		}
 		return tok;
 	}
@@ -385,6 +387,18 @@ export default class Parser {
 	protected parseAtom(): Node | null {
 		if (this.take(TokenKeyword, 'null')) {
 			return new NodeNull();
+		}
+		const number = <string | null>this.take(TokenNumber);
+		if (number !== null) {
+			return new NodeNumber({
+				value: number
+			});
+		}
+		const string = <string | null>this.take(TokenString);
+		if (string !== null) {
+			return new NodeString({
+				value: string
+			});
 		}
 		const identifier = this.parseIdentifier();
 		if (identifier !== null) {
