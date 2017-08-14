@@ -35,6 +35,7 @@ export class NodeTypeReference extends BaseNode<NodeTypeReference> {
 
 export abstract class BaseNodeVal<T> extends BaseNode<T> {
 	name: NodeIdentifier;
+	valType: NodeTypeReference | null;
 	initializer: NodeExpression | null;
 }
 

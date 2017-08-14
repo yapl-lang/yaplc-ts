@@ -285,13 +285,12 @@ export default class Parser {
 			return null;
 		}
 		const name = <NodeIdentifier>this.doParse(this.parseIdentifier);
-		// TODO: Parse type
-		if (this.take(TokenOperator, '=')) {
-			// TODO: Parse initializer as an expression
-		}
+		const valType = this.take(TokenOperator, ':') ? this.doParse(this.parseTypeRef) : null;
+		const initializer = this.take(TokenOperator, '=') ? null : null; // TODO: Parse initializer as an expression
 		return new type({
 			name: name,
-			initializer: null,
+			valType: valType,
+			initializer: initializer,
 		});
 	}
 
