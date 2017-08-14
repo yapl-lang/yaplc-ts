@@ -1,5 +1,6 @@
 import {BaseToken} from './Token';
 import {char} from '../util/Char';
+import {OperatorsValues} from '../Operators';
 
 export class TokenNewline extends BaseToken<TokenNewline> {
 	type = 'nl';
@@ -40,45 +41,7 @@ export class TokenPunctuation extends BaseToken<TokenPunctuation> {
 }
 
 export class TokenOperator extends BaseToken<TokenOperator> {
-	static OPERATORS: string[] = [
-		// TODO: Some way to parse set operators(+=, -=, etc.)
-
-		'=',
-
-		// Arithmetic
-		'+',
-		'-',
-		'/',
-		'*',
-
-		'^',
-		'%',
-
-		// Equality
-		'==',
-		'!=',
-		'>',
-		'<',
-		'>=',
-		'<=',
-
-		// Boolean
-		'!',
-		'&&',
-		'||',
-
-		// Bit
-		'>>',
-		'<<',
-		// Need unsigned right shift?
-		'~',
-		'&',
-		'|',
-
-		// Short if-else
-		'?',
-		':',
-	].sort((a, b) => b.length - a.length);
+	static OPERATORS: string[] = OperatorsValues;
 
 	type = 'op';
 	value: char;

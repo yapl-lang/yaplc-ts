@@ -348,7 +348,7 @@ export default class Parser {
 	}
 
 	protected parseExpression(): NodeExpression | null {
-		return this.doParse(() => this.parseMaybeCall(() => this.doParse(this.parseAtom)));
+		return this.doParse(() => this.parseMaybeCall(() => this.doParse(this.parseMaybeBinary, this.parseAtom, 0)));
 	}
 
 	protected parseMaybeCall(calleeGen: (() => Node | null)): NodeCall | NodeExpression | null {
@@ -407,6 +407,14 @@ export default class Parser {
 			});
 		}
 		return null;
+	}
+
+	public parseMaybeBinary(left: NodeExpression, leftPrec: number): Node | null {
+		const op = this.take(TokenOperator);
+		if (op !== null) {
+			// TODO: Compare, etc.
+		}
+		return left;
 	}
 
 	public parse(): NodePackage {
