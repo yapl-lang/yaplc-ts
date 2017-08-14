@@ -10,6 +10,7 @@ import {
 	TokenIndent,
 	TokenOutdent,
 	TokenWhitespace,
+	TokenSemicolon,
 	TokenPunctuation,
 	TokenOperator,
 	TokenKeyword,
@@ -94,6 +95,9 @@ export default class TokenStream {
 		if (Char.isNewline(c)) {
 			this.input.next();
 			return new TokenNewline();
+		}
+		if (c === ';') {
+			return new TokenSemicolon();
 		}
 		if (TokenPunctuation.CHARS.includes(c)) {
 			return new TokenPunctuation({

@@ -27,8 +27,13 @@ export class TokenWhitespace extends BaseToken<TokenWhitespace> {
 	value: string;
 }
 
+export class TokenSemicolon extends BaseToken<TokenSemicolon> {
+	type = 'semi';
+	isWhitespace = true;
+}
+
 export class TokenPunctuation extends BaseToken<TokenPunctuation> {
-	static CHARS: string = ',;(){}[]';
+	static CHARS: string = ',(){}[]';
 
 	type = 'punc';
 	value: char;
