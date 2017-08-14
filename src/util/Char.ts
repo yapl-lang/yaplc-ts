@@ -26,6 +26,10 @@ export default class Char {
 	static isWhitespace(c: char): boolean {
 		return Char.is(c, ' \t\r\n');
 	}
+	
+	static isWhitespaceButNl(c: char): boolean {
+		return Char.is(c, ' \t');
+	}
 
 	static isNewline(c: char): boolean {
 		return Char.is(c, '\r\n');

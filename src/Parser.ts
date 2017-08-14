@@ -165,6 +165,61 @@ export default class Parser {
 		return elements.join('.');
 	}
 
+	protected enterBlock<T extends Node>(...call: ((c: Token, i: number) => T | null)[]): T[] {
+		const result: T[] = [];
+		let tok;
+		while ((tok = this.input.peek(false)).isWhitespace && !(tok instanceof TokenEof) && !(tok instanceof TokenIndent)) {
+			this.input.next(false);
+		}
+		if (tok instanceof TokenIndent) {
+			this.input.next(false);
+			while (true) {
+				let res = null;
+				for (const acall of call) {
+					if ((res = this.doParse<T>(acall, this.input.peek(), result.length)) !== null) {
+						break;
+					}
+				}
+				if (res === null) {
+					throw this.error('Unexpected');
+				}
+				result.push(res);
+				while ((tok = this.input.peek(false)).isWhitespace && !(tok instanceof TokenEof) && !(tok instanceof TokenOutdent)) {
+					this.input.next(false);
+				}
+				if (tok instanceof TokenEof || tok instanceof TokenOutdent) {
+					this.input.next(false);
+					break;
+				}
+			}
+		} else if (this.take(TokenPunctuation, '{')) {
+			while (!this.take(TokenPunctuation, '}')) {
+				let res = null;
+				for (const acall of call) {
+					if ((res = this.doParse<T>(acall, this.input.peek(), result.length)) !== null) {
+						break;
+					}
+				}
+				if (res === null) {
+					throw this.error('Unexpected');
+				}
+				result.push(res);
+			}
+		} else {
+			let res = null;
+			for (const acall of call) {
+				if ((res = this.doParse<T>(acall, this.input.peek(), result.length)) !== null) {
+					break;
+				}
+			}
+			if (res === null) {
+				throw this.error('Unexpected');
+			}
+			result.push(res);
+		}
+		return result;
+	}
+
 	protected parseIdentifier(): NodeIdentifier | null {
 		const name = <string>(this.take(TokenIdentifier, null, true, 'value') || this.take(TokenKeyword, [
 			// TODO: Add keywords that are identifiers
@@ -261,7 +316,7 @@ export default class Parser {
 				name: name,
 				arguments: args,
 				returns: returns,
-				//body: this.enterBlock(),
+				//body: this.enterBlock(this.parseStatement),
 			})
 		}
 		return null;

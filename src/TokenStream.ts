@@ -69,12 +69,8 @@ export default class TokenStream {
 			return new TokenEof();
 		}
 		let c = this.input.peek();
-		if (Char.isNewline(c)) {
-			this.input.next();
-			return new TokenNewline();
-		}
-		if (Char.isWhitespace(c)) {
-			const whitespace = this.readWhile(Char.isWhitespace);
+		if (Char.isWhitespaceButNl(c) || this.oldIndent !== '') {
+			const whitespace = this.readWhile(Char.isWhitespaceButNl);
 			if (this.previous instanceof TokenNewline && this.oldIndent !== whitespace) {
 				const len = Math.min(this.oldIndent.length, whitespace.length);
 				if (this.oldIndent.substr(0, len) !== whitespace.substr(0, len)) {
@@ -89,9 +85,15 @@ export default class TokenStream {
 					}
 				}
 			}
-			return new TokenWhitespace({
-				value: whitespace
-			});
+			if (whitespace !== '') {
+				return new TokenWhitespace({
+					value: whitespace
+				});
+			}
+		}
+		if (Char.isNewline(c)) {
+			this.input.next();
+			return new TokenNewline();
 		}
 		if (TokenPunctuation.CHARS.includes(c)) {
 			return new TokenPunctuation({
