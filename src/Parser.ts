@@ -70,15 +70,15 @@ export default class Parser {
 		return node;
 	}
 
-	protected skip<T extends Token>(constructor: {new(): T} | null = null, value: string[] | string | null = null, skipWhitespace: boolean = true, field: string | null = null): T | string {
-		if (!this.is<T>(constructor, value, skipWhitespace, field)) {
+	protected skip<T extends Token>(constructor: {new(): T} | null = null, value: string[] | string | null = null, field: string | null = 'value', skipWhitespace: boolean = true): T | string {
+		if (!this.is<T>(constructor, value, field, skipWhitespace)) {
 			throw this.error(`Expected ${value === null ? constructor === null ? '' : constructor.name : value}`, this.input.peek());
 		}
-		return <T | string>this.take<T>(constructor, value, skipWhitespace, field);
+		return <T | string>this.take<T>(constructor, value, field, skipWhitespace);
 	}
 
-	protected take<T extends Token>(constructor: {new(): T} | null = null, value: string[] | string | null = null, skipWhitespace: boolean = true, field: string | null = null): T | string | null {
-		if (!this.is<T>(constructor, value, skipWhitespace, field)) {
+	protected take<T extends Token>(constructor: {new(): T} | null = null, value: string[] | string | null = null, field: string | null = 'value', skipWhitespace: boolean = true): T | string | null {
+		if (!this.is<T>(constructor, value, field, skipWhitespace)) {
 			return null;
 		}
 		if (this.currentNodeBegin === null) {
@@ -91,7 +91,7 @@ export default class Parser {
 		return tok;
 	}
 
-	protected is<T extends Token>(constructor: {new(): T} | null = null, value: string[] | string | null = null, skipWhitespace: boolean = true, field: string | null = 'value', skipCount: number = 0): boolean {
+	protected is<T extends Token>(constructor: {new(): T} | null = null, value: string[] | string | null = null, field: string | null = 'value', skipWhitespace: boolean = true, skipCount: number = 0): boolean {
 		const tok = this.input.peek(skipWhitespace, skipCount);
 		return (constructor === null || tok instanceof constructor)
 			&& (typeof value !== 'string' || (<any>tok)[field || 'value'] === value)
@@ -152,11 +152,11 @@ export default class Parser {
 		const id: string[] = [];
 		let first;
 		if (first = (optional
-				? <string>this.take(TokenIdentifier, null, true, 'value')
-				: <string>this.skip(TokenIdentifier, null, true, 'value'))) {
+				? <string>this.take(TokenIdentifier)
+				: <string>this.skip(TokenIdentifier))) {
 			id.push(first);
 			while (this.take(TokenDot)) {
-				id.push(<string>this.skip(TokenIdentifier, null, true, 'value'));
+				id.push(<string>this.skip(TokenIdentifier));
 			}
 		}
 		return id;
@@ -226,11 +226,11 @@ export default class Parser {
 	}
 
 	protected parseIdentifier(): NodeIdentifier | null {
-		const name = <string>(this.take(TokenIdentifier, null, true, 'value') || this.take(TokenKeyword, [
+		const name = <string>(this.take(TokenIdentifier) || this.take(TokenKeyword, [
 			'this',
 			'null',
 			// TODO: Add keywords that are identifiers
-		], true, 'value'));
+		]));
 		if (name !== null) {
 			return new NodeIdentifier({
 				name: name,
@@ -240,9 +240,9 @@ export default class Parser {
 	}
 
 	protected parseTypeName(): NodeTypeName | null {
-		const name = <string>(this.take(TokenIdentifier, null, true, 'value') || this.take(TokenKeyword, [
+		const name = <string>(this.take(TokenIdentifier) || this.take(TokenKeyword, [
 			// TODO: Add keywords that are types
-		], true, 'value'));
+		]));
 		if (name !== null) {
 			return new NodeTypeName({
 				name: name,
@@ -332,7 +332,7 @@ export default class Parser {
 	protected parseFunArgument(): NodeFunctionArgument | null {
 		const name = this.doParse(this.parseIdentifier);
 		if (name !== null) {
-			const type = this.take(TokenOperator, ':', true, 'value') ? this.doParse(this.parseTypeRef) : null;
+			const type = this.take(TokenOperator, ':') ? this.doParse(this.parseTypeRef) : null;
 			return new NodeFunctionArgument({
 				name: name,
 				targetType: type,
@@ -368,7 +368,7 @@ export default class Parser {
 
 	protected parseCallArgument(): NodeCallArgument | null {
 		let name = null;
-		if (this.is(TokenOperator, ':', true, 'value', 1)) {
+		if (this.is(TokenOperator, ':', 'value', true, 1)) {
 			name = this.doParse(this.parseIdentifier);
 			this.input.next();
 		}

@@ -29,7 +29,8 @@ const tokenStream = new TokenStream(charStream, errorHandler);
 const parser = new Parser(tokenStream, errorHandler);
 
 try {
-	if (!false) {
+	const printAst = true;
+	if (!printAst) {
 		let tok;
 		while (!((tok = tokenStream.next(false)) instanceof TokenEof)) {
 			console.log(JSON.stringify(tok, null, '  '));
