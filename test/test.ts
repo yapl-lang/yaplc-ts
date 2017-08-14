@@ -6,13 +6,13 @@ use stdout
   My comment
 
 fun main args: string: string {
-	print 'hello'
-	print 'hello'
+	print(null)
+	print(named: null)
 }
 
 fun main2 args: string: string
-	print 'hello'
-	print 'hello'
+	print(null)
+	print(named: null)
 `;
 
 import ArrayErrorHandler from '../src/error/ArrayErrorHandler';

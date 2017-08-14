@@ -58,14 +58,34 @@ export class NodeFunction extends BaseNode<NodeFunction> {
 }
 
 export class NodeFunctionArgument extends BaseNode<NodeFunctionArgument> {
-	type = 'arg';
+	type = 'funarg';
 
 	name: NodeIdentifier;
 	targetType: NodeTypeReference | null;
 }
 
-export class NodeExpression extends BaseNode<NodeExpression> {
-	type = 'exp';
+export abstract class NodeExpression<Self extends Node = Node> extends BaseNode<Self> {
+}
 
-	// TODO:
+export class NodeNull extends NodeExpression<NodeNull> {
+	type = 'null';
+}
+
+export class NodeCall extends NodeExpression<NodeCall> {
+	type = 'call';
+	callee: NodeExpression;
+	arguments: NodeCallArgument[];
+}
+
+export class NodeCallArgument extends BaseNode<NodeCallArgument> {
+	type = 'callarg';
+
+	name: NodeIdentifier | null;
+	value: NodeExpression;
+}
+
+export class NodeReference extends NodeExpression<NodeReference> {
+	type = 'ref';
+
+	name: NodeIdentifier | null;
 }

@@ -30,6 +30,10 @@ import {
 	NodeFunction,
 	NodeFunctionArgument,
 	NodeExpression,
+	NodeNull,
+	NodeCall,
+	NodeCallArgument,
+	NodeReference,
 } from './ast/Nodes';
 
 class TokenEqualiter {
@@ -86,8 +90,8 @@ export default class Parser {
 		return tok;
 	}
 
-	protected is<T extends Token>(constructor: {new(): T} | null = null, value: string[] | string | null = null, skipWhitespace: boolean = true, field: string | null = 'value'): boolean {
-		const tok = this.input.peek(skipWhitespace);
+	protected is<T extends Token>(constructor: {new(): T} | null = null, value: string[] | string | null = null, skipWhitespace: boolean = true, field: string | null = 'value', skipCount: number = 0): boolean {
+		const tok = this.input.peek(skipWhitespace, skipCount);
 		return (constructor === null || tok instanceof constructor)
 			&& (typeof value !== 'string' || (<any>tok)[field || 'value'] === value)
 			&& (!(value instanceof Array) || value.includes((<any>tok)[field || 'value']));
@@ -222,6 +226,8 @@ export default class Parser {
 
 	protected parseIdentifier(): NodeIdentifier | null {
 		const name = <string>(this.take(TokenIdentifier, null, true, 'value') || this.take(TokenKeyword, [
+			'this',
+			'null',
 			// TODO: Add keywords that are identifiers
 		], true, 'value'));
 		if (name !== null) {
@@ -286,7 +292,7 @@ export default class Parser {
 		}
 		const name = <NodeIdentifier>this.doParse(this.parseIdentifier);
 		const valType = this.take(TokenOperator, ':') ? this.doParse(this.parseTypeRef) : null;
-		const initializer = this.take(TokenOperator, '=') ? null : null; // TODO: Parse initializer as an expression
+		const initializer = this.take(TokenOperator, '=') ? this.doParse(this.parseExpression) : null;
 		return new type({
 			name: name,
 			valType: valType,
@@ -311,11 +317,12 @@ export default class Parser {
 				{type: TokenPunctuation, value: '('},
 				{type: TokenPunctuation, value: ','},
 				{type: TokenPunctuation, value: ')'}, true, true) : [];
+			// TODO: Just-return function(fun name(some: string) = print(some))
 			return new NodeFunction({
 				name: name,
 				arguments: args,
 				returns: returns,
-				//body: this.enterBlock(this.parseStatement),
+				body: this.enterBlock(this.parseStatement),
 			})
 		}
 		return null;
@@ -328,6 +335,60 @@ export default class Parser {
 			return new NodeFunctionArgument({
 				name: name,
 				targetType: type,
+			});
+		}
+		return null;
+	}
+
+	protected parseStatement(): NodeExpression | NodeVal | NodeVar | null {
+		return this.parseVarOrVal() || this.parseExpression();
+	}
+
+	protected parseExpression(): NodeExpression | null {
+		return this.doParse(() => this.parseMaybeCall(() => this.doParse(this.parseAtom)));
+	}
+
+	protected parseMaybeCall(calleeGen: (() => Node | null)): NodeCall | NodeExpression | null {
+		const callee = calleeGen();
+		if (callee === null) {
+			return null;
+		}
+		if (this.is(TokenPunctuation, '(')) {
+			return new NodeCall({
+				callee: callee,
+				arguments: this.delimited(this.parseCallArgument,
+					{type: TokenPunctuation, value: '('},
+					{type: TokenPunctuation, value: ','},
+					{type: TokenPunctuation, value: ')'})
+			});
+		}
+		return callee;
+	}
+
+	protected parseCallArgument(): NodeCallArgument | null {
+		let name = null;
+		if (this.is(TokenOperator, ':', true, 'value', 1)) {
+			name = this.doParse(this.parseIdentifier);
+			this.input.next();
+		}
+		const value = this.doParse(this.parseExpression);
+		if (value === null) {
+			throw this.error('Expression expected');
+		}
+		return new NodeCallArgument({
+			name: name,
+			value: value,
+		});
+	}
+
+	protected parseAtom(): Node | null {
+		if (this.take(TokenKeyword, 'null')) {
+			return new NodeNull();
+		}
+		const identifier = this.parseIdentifier();
+		if (identifier !== null) {
+			return new NodeReference({
+				name: identifier
 			});
 		}
 		return null;
