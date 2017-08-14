@@ -32,4 +32,16 @@ export default class String {
 		}
 		return '';
 	}
+
+	static prefixLines(str: string, start: number): string {
+		const linesCount = str.split('').reduce((val, ch) => val + (ch === '\n' ? 1 : 0), 1);
+		const end = start + linesCount;
+		const minL = `${end}. `.length;
+
+		return ('\n' + str).replace(/\n/g, (str) => {
+			let num = `${start++}.`;
+			num += ' '.repeat(minL - num.length);
+			return '\n' + num;
+		}).substr(1);
+	}
 }

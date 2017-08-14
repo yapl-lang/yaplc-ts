@@ -6,6 +6,9 @@ export default class CodePosition {
 	private cachedLine: number | null;
 	private cachedColumn: number | null;
 
+	/**
+	 * Return line number of position(starts from 1)
+	 */
 	get line(): number {
 		if (this.cachedLine === null) {
 			this.cacheLineAndColumn();
@@ -13,6 +16,9 @@ export default class CodePosition {
 		return <number>this.cachedLine;
 	}
 
+	/**
+	 * Return column number of position(starts from 0)
+	 */
 	get column(): number {
 		if (this.cachedColumn === null) {
 			this.cacheLineAndColumn();

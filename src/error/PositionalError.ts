@@ -19,22 +19,24 @@ export default abstract class PositionalError extends Error {
 		const single = this.end === null || this.begin.equals(this.end);
 		const singleLine = single || this.begin.line === (<CodePosition>this.end).line;
 		let result: string = '';
-		// TODO: Print line before code
 		if (single) {
 			const {line, start, end} = this.begin.getLine();
-			result += line + '\n';
-			result += StringUtil.padOf(line, this.begin.column) + '|\n';
+			const prefix = this.begin.line + '. ';
+			result += prefix + line + '\n';
+			result += ' '.repeat(prefix.length) + StringUtil.padOf(line, this.begin.column) + '|\n';
 		} else if (singleLine) {
 			const {line} = this.begin.getLine();
-			result += StringUtil.padOf(line, this.begin.column) + '|\n';
-			result += line + '\n';
-			result += StringUtil.padOf(line, (<CodePosition>this.end).column) + '|\n';
+			const prefix = this.begin.line + '. ';
+			result += ' '.repeat(prefix.length) + StringUtil.padOf(line, this.begin.column) + '|\n';
+			result += prefix + line + '\n';
+			result += ' '.repeat(prefix.length) + StringUtil.padOf(line, (<CodePosition>this.end).column) + '|\n';
 		} else {
 			const {line: startLine, start} = this.begin.getLine();
 			const {line: endLine, end} = (<CodePosition>this.end).getLine();
-			result += StringUtil.padOf(startLine, this.begin.column) + '|\n';
-			result += this.begin.code.substring(start, end) + '\n';
-			result += StringUtil.padOf(endLine, (<CodePosition>this.end).column) + '|\n';
+			const prefixSize = `${(<CodePosition>this.end).line}. `.length;
+			result += ' '.repeat(prefixSize) + StringUtil.padOf(startLine, this.begin.column) + '|\n';
+			result += StringUtil.prefixLines(this.begin.code.substring(start, end), this.begin.line) + '\n';
+			result += ' '.repeat(prefixSize) + StringUtil.padOf(endLine, (<CodePosition>this.end).column) + '|\n';
 		}
 		return `${result}${super.toString()} at ${this.begin}${this.isPoint ? '' : `-${this.end}`}`;
 	}
