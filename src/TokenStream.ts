@@ -17,6 +17,7 @@ import {
 	TokenIdentifier,
 	TokenDot,
 	TokenComment,
+	TokenNumber,
 	TokenString,
 } from './token/Tokens';
 import { default as Char, char } from './util/Char';
@@ -63,6 +64,32 @@ export default class TokenStream {
 			: this.readWhile(c => !breakpoint.includes(c));
 		this.input.next();
 		return val;
+	}
+
+	private readNumber(readed: string = '', wasDot: boolean = false, wasE: boolean = false): TokenNumber {
+		if (wasE) {
+			return new TokenNumber({
+				value: readed
+			});
+		}
+		if (wasDot) {
+			readed += this.readWhile(Char.isDigit);
+			if ('eE'.includes(this.input.peek())) { // Science notation
+				this.input.next();
+				readed += 'E';
+				if (this.input.peek() === '-') {
+					readed += this.input.next();
+				}
+				readed += this.readWhile(Char.isDigit);
+			}
+			return this.readNumber(readed, true, true);
+		}
+		const beforeComma = this.readWhile(Char.isDigit);
+		const hasComma = this.input.peek() === '.';
+		if (hasComma) {
+			this.input.next();
+		}
+		return this.readNumber(beforeComma + (hasComma ? '.' : ''), true, !hasComma);
 	}
 
 	private read(): Token {
@@ -139,7 +166,13 @@ export default class TokenStream {
 		}
 		if (c === '.') {
 			this.input.next();
+			if (Char.isDigit(this.input.peek())) {
+				return this.readNumber('.', true);
+			}
 			return new TokenDot();
+		}
+		if (Char.isDigit(c)) {
+			return this.readNumber();
 		}
 		if (c === '#') {
 			return new TokenComment({
@@ -158,12 +191,12 @@ export default class TokenStream {
 		throw this.error('Unexpected ' + c);
 	}
 
-	public peek(skipWhitespace: boolean = true): Token {
+	public peek(skipWhitespace: boolean = true, skipCount: number = 0): Token {
 		if (!skipWhitespace && this.current.length !== 0) {
 			return this.current[0];
 		}
 		for (const tok of this.current) {
-			if (!tok.isWhitespace) {
+			if (!tok.isWhitespace && skipCount-- === 0) {
 				return tok;
 			}
 		}
@@ -178,7 +211,7 @@ export default class TokenStream {
 				tok.end = end;
 			}
 			this.current.push(tok);
-			if (!skipWhitespace || !tok.isWhitespace) {
+			if ((!skipWhitespace || !tok.isWhitespace) && skipCount-- === 0) {
 				return tok;
 			}
 		}

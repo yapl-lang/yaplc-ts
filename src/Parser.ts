@@ -16,6 +16,7 @@ import {
 	TokenIdentifier,
 	TokenDot,
 	TokenComment,
+	TokenNumber,
 	TokenString,
 } from './token/Tokens';
 import Node from './ast/Node';

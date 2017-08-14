@@ -6,13 +6,13 @@ use stdout
   My comment
 
 fun main args: string: string {
-	print(null)
-	print(named: null)
+	print(5.9)
+	print(named: 18)
 }
 
 fun main2 args: string: string
-	print(null)
-	print(named: null)
+	print(18.64)
+	print(named: 15.84E-5)
 `;
 
 import ArrayErrorHandler from '../src/error/ArrayErrorHandler';
@@ -29,13 +29,15 @@ const tokenStream = new TokenStream(charStream, errorHandler);
 const parser = new Parser(tokenStream, errorHandler);
 
 try {
-	/*let tok;
-	while (!((tok = tokenStream.next(false)) instanceof TokenEof)) {
-		console.log(JSON.stringify(tok, null, '  '));
-	}*/
-
-	const ast = parser.parse();
-	console.log(JSON.stringify(ast, null, '  '));
+	if (!false) {
+		let tok;
+		while (!((tok = tokenStream.next(false)) instanceof TokenEof)) {
+			console.log(JSON.stringify(tok, null, '  '));
+		}
+	} else {
+		const ast = parser.parse();
+		console.log(JSON.stringify(ast, null, '  '));
+	}
 } catch (e) {
 	if (!(e instanceof PositionalError)) {
 		throw e;

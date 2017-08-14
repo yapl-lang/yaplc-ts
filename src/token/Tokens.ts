@@ -91,6 +91,9 @@ export class TokenKeyword extends BaseToken<TokenKeyword> {
 		'var',
 		'val',
 		'use',
+
+		'null',
+		'this',
 	];
 
 	type = 'kw';
@@ -111,6 +114,12 @@ export class TokenComment extends BaseToken<TokenComment> {
 	isWhitespace = true;
 
 	commentType: string;
+	value: string;
+}
+
+export class TokenNumber extends BaseToken<TokenNumber> {
+	type = 'num';
+
 	value: string;
 }
 
