@@ -327,7 +327,7 @@ export default class Parser {
 				{type: TokenPunctuation, value: '('},
 				{type: TokenPunctuation, value: ','},
 				{type: TokenPunctuation, value: ')'}, true, true) : [];
-			// TODO: Just-return function(fun name(some: string) = print(some))
+			this.take(TokenOperator, '=');
 			return new NodeFunction({
 				name: name,
 				arguments: args,
