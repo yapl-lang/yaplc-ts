@@ -263,7 +263,7 @@ export default class Parser {
 	protected parseTypeRef(): NodeTypeReference | null {
 		const type = this.doParse(this.parseTypeName);
 		if (type !== null) {
-			// TODO: Parse things like generics(templates) and arrays
+			// TODO: Parse things like generics(templates) and arrays and lambdas
 			return new NodeTypeReference({
 				name: type,
 			});
