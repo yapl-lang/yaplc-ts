@@ -55,8 +55,14 @@ export class TokenKeyword extends BaseToken<TokenKeyword> {
 		'val',
 		'use',
 
+		'if',
+		'then',
+		'else',
+
 		'null',
 		'this',
+		'true',
+		'false',
 	];
 
 	type = 'kw';

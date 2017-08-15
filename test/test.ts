@@ -5,9 +5,18 @@ use stdout
 # Hello, \\
   My comment
 
+val loggingEnabled = true
+
+fun log call: lambda
+	if loggingEnabled
+		print(call())
+
 fun main args: string: string {
-	print(5.9)
+	val a = 5
+	--a
+	print(a)
 	print(named: 18 + 1 * 9)
+	log(fun 'hello')
 }
 
 fun main2 args: string: string

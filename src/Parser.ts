@@ -31,7 +31,6 @@ import {
 	NodeFunction,
 	NodeFunctionArgument,
 	NodeExpression,
-	NodeNull,
 	NodeCall,
 	NodeCallArgument,
 	NodeReference,
@@ -40,8 +39,10 @@ import {
 	NodePrefixUnaryOperator,
 	NodeSuffixUnaryOperator,
 	NodeBinaryOperator,
+	NodeIf,
+	NodeBlock,
 } from './ast/Nodes';
-import {OperatorsMap} from './Operators';
+import {OperatorType, OperatorsProvider} from './Operators';
 
 class TokenEqualiter {
 	constructor(readonly type: {new(): Token} | null = null, readonly value: string | null = null) {
@@ -70,8 +71,8 @@ export default class Parser {
 			return null;
 		}
 		const end = this.input.position;
-		node.begin = this.currentNodeBegin || begin;
-		node.end = end;
+		node.begin = node.begin || this.currentNodeBegin || begin;
+		node.end = node.end || end;
 		this.currentNodeBegin = oldBegin;
 		return node;
 	}
@@ -233,8 +234,10 @@ export default class Parser {
 
 	protected parseIdentifier(): NodeIdentifier | null {
 		const name = <string>(this.take(TokenIdentifier) || this.take(TokenKeyword, [
-			'this',
 			'null',
+			'this',
+			'true',
+			'false',
 			// TODO: Add keywords that are identifiers
 		]));
 		if (name !== null) {
@@ -272,7 +275,7 @@ export default class Parser {
 		const pack = this.take(TokenKeyword, 'package') ? this.takeDottedId() : null;
 		return new NodePackage({
 			package: pack,
-			body: this.while<Node>(this.parseUse, this.parseVarOrVal, this.parseFun),
+			body: this.while<Node>(this.parseUse, this.parseVarOrVal, () => this.parseFun()),
 		});
 	}
 
@@ -307,10 +310,10 @@ export default class Parser {
 		});
 	}
 
-	protected parseFun(): NodeFunction | null {
+	protected parseFun(expression: boolean = false): NodeFunction | null {
 		if (this.take(TokenKeyword, 'fun')) {
 			let name = this.doParse(this.parseIdentifier);
-			if (name === null) {
+			if (!expression && name === null) {
 				this.error('Function name expected');
 				name = new NodeIdentifier({
 					name: ''
@@ -351,8 +354,8 @@ export default class Parser {
 		return this.doParse(this.parseVarOrVal) || this.doParse(this.parseExpression);
 	}
 
-	protected parseExpression(): NodeExpression | null {
-		return this.doParse(() => this.parseMaybeCall(() => this.doParse(this.parseMaybeBinary, this.doParse(this.parseAtom), 128)));
+	protected parseExpression(canBlock: boolean = false): NodeExpression | null {
+		return this.doParse(() => this.parseMaybeUnary(() => this.parseMaybeCall(() => this.doParse(this.parseMaybeBinary, this.doParse(this.parseAtom, canBlock), 128))));
 	}
 
 	protected parseMaybeCall(calleeGen: (() => Node | null)): NodeCall | NodeExpression | null {
@@ -380,7 +383,7 @@ export default class Parser {
 		}
 		const value = this.doParse(this.parseExpression);
 		if (value === null) {
-			throw this.error('Expression expected');
+			return null;
 		}
 		return new NodeCallArgument({
 			name: name,
@@ -388,9 +391,14 @@ export default class Parser {
 		});
 	}
 
-	protected parseAtom(): Node | null {
-		if (this.take(TokenKeyword, 'null')) {
-			return new NodeNull();
+	protected parseAtom(canBlock: boolean = false): Node | null {
+		if (this.take(TokenPunctuation, '(')) {
+			const exp = this.doParse(this.parseExpression);
+			if (exp === null) {
+				throw this.error('Expression expected');
+			}
+			this.skip(TokenPunctuation, ')');
+			return exp;
 		}
 		const number = <string | null>this.take(TokenNumber);
 		if (number !== null) {
@@ -410,22 +418,64 @@ export default class Parser {
 				name: identifier
 			});
 		}
+		const fun = this.doParse(this.parseFun, true);
+		if (fun !== null) {
+			return fun;
+		}
+		const ifnode = this.doParse(this.parseIf);
+		if (ifnode !== null) {
+			return ifnode;
+		}
+		if (canBlock) {
+			const block = this.enterBlock(this.parseStatement);
+			return new NodeBlock({
+				expressions: block
+			});
+		}
 		return null;
+	}
+
+	protected parseMaybeUnary(expGen: (() => NodeExpression | null)): NodeExpression | NodePrefixUnaryOperator | NodeSuffixUnaryOperator | null {
+		let op = this.input.peek();
+		if (op instanceof TokenOperator) {
+			const thatOp = OperatorsProvider.get(op.value, OperatorType.PrefixUnary);
+			if (thatOp !== null) {
+				this.input.next();
+				const exp = expGen();
+				if (exp === null) {
+					return null;
+				}
+				return new NodePrefixUnaryOperator({
+					op: thatOp,
+					exp: exp
+				});
+			}
+		}
+		const exp = expGen();
+		if (exp === null) {
+			return null;
+		}
+		op = this.input.peek(false);
+		if (op instanceof TokenOperator) {
+			const thatOp = OperatorsProvider.get(op.value, OperatorType.SuffixUnary);
+			if (thatOp !== null) {
+				this.input.next();
+				return new NodeSuffixUnaryOperator({
+					op: thatOp,
+					exp: exp
+				});
+			}
+		}
+		return exp;
 	}
 
 	public parseMaybeBinary(left: NodeExpression, leftPriority: number): Node | null {
 		const op = this.input.peek();
 		if (op instanceof TokenOperator) {
-			const thatOp = OperatorsMap[op.value];
-			let thatPriority = 0;
-			if (thatOp !== null) {
-				thatPriority = thatOp.priority;
-			} else {
-				this.error('Unknown operator', op);
-			}
-			if (thatPriority <= leftPriority) {
+			const thatOp = OperatorsProvider.get(op.value, OperatorType.Binary);
+			if (thatOp !== null && thatOp.priority <= leftPriority) {
 				this.input.next();
-				const right = <NodeBinaryOperator>this.doParse(this.parseMaybeBinary, this.doParse(this.parseAtom), thatPriority);
+				const right = <NodeBinaryOperator>this.doParse(this.parseMaybeBinary, this.doParse(this.parseAtom), thatOp.priority);
 				const current = new NodeBinaryOperator({
 					op: thatOp,
 					left: left,
@@ -435,6 +485,30 @@ export default class Parser {
 			}
 		}
 		return left;
+	}
+
+	public parseIf(): NodeIf | null {
+		if (this.take(TokenKeyword, 'if')) {
+			const condition = this.doParse(this.parseExpression);
+			if (condition === null) {
+				throw this.error('Condition expected');
+			}
+			this.take(TokenKeyword, 'then');
+			const then = this.doParse(this.parseExpression);
+			if (then === null) {
+				throw this.error('Expression expected');
+			}
+			let elsee = null;
+			if (this.take(TokenKeyword, 'else') && (elsee = this.doParse(this.parseExpression)) === null) {	
+				throw this.error('Expression expected');
+			}
+			return new NodeIf({
+				condition: condition,
+				then: then,
+				else: elsee,
+			});
+		}
+		return null;
 	}
 
 	public parse(): NodePackage {

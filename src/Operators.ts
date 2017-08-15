@@ -10,7 +10,7 @@ export class Operator {
 }
 
 export const Operators: Operator[] = [
-	new Operator('++', 'Suffic Increment', 1, OperatorType.SuffixUnary),
+	new Operator('++', 'Suffix Increment', 1, OperatorType.SuffixUnary),
 	new Operator('--', 'Suffix Decrement', 1, OperatorType.SuffixUnary),
 
 	new Operator('++', 'Prefix Increment', 2, OperatorType.PrefixUnary),
@@ -75,3 +75,20 @@ export const OperatorsMap = Operators.reduce((obj: {[key: string]: Operator}, op
 	obj[op.value] = op;
 	return obj;
 }, {});
+
+
+const providerCache:{[key: string]: Operator} = {};
+export const OperatorsProvider = {
+	get(value: string, type: OperatorType): Operator | null {
+		const hash = `${type}-${value}`;
+		if (hash in providerCache) {
+			return providerCache[hash];
+		}
+		for (const operator of Operators) {
+			if (operator.value === value && operator.type === type) {
+				return providerCache[hash] = operator;
+			}
+		}
+		return null;
+	}
+}

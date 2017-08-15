@@ -49,10 +49,13 @@ export class NodeVar extends BaseNodeVal<NodeVar> {
 }
 
 
-export class NodeFunction extends BaseNode<NodeFunction> {
+export abstract class NodeExpression<Self extends Node = Node> extends BaseNode<Self> {
+}
+
+export class NodeFunction extends NodeExpression<NodeFunction> {
 	type = 'fun';
 
-	name: NodeIdentifier;
+	name: NodeIdentifier | null;
 	arguments: NodeFunctionArgument[];
 	returns: NodeTypeReference[];
 	body: NodeExpression[];
@@ -63,13 +66,6 @@ export class NodeFunctionArgument extends BaseNode<NodeFunctionArgument> {
 
 	name: NodeIdentifier;
 	targetType: NodeTypeReference | null;
-}
-
-export abstract class NodeExpression<Self extends Node = Node> extends BaseNode<Self> {
-}
-
-export class NodeNull extends NodeExpression<NodeNull> {
-	type = 'null';
 }
 
 export class NodeCall extends NodeExpression<NodeCall> {
@@ -125,4 +121,17 @@ export class NodeBinaryOperator extends NodeOperator<NodeBinaryOperator> {
 
 	left: NodeExpression;
 	right: NodeExpression;
+}
+
+export class NodeIf extends NodeExpression<NodeIf> {
+	type = 'if';
+
+	condition: NodeExpression;
+	then: NodeExpression;
+	else: NodeExpression | null;
+}
+
+export class NodeBlock extends NodeExpression<NodeBlock> {
+	type = 'block';
+	expressions: NodeExpression[];
 }
