@@ -406,10 +406,11 @@ export default class Parser {
 				value: number
 			});
 		}
-		const string = <string | null>this.take(TokenString);
+		const string = <TokenString | null>this.take(TokenString, null, null);
 		if (string !== null) {
 			return new NodeString({
-				value: string
+				stringType: string.stringType,
+				value: string.value,
 			});
 		}
 		const identifier = this.doParse(this.parseIdentifier);

@@ -29,6 +29,7 @@ import PositionalError from '../src/error/PositionalError';
 import CharStream from '../src/CharStream';
 import TokenStream from '../src/TokenStream';
 import Parser from '../src/Parser';
+import {NodePrinterStdoutTarget, NodeCodePrettyPrinter} from '../src/visitor/NodePrinter';
 import {TokenEof} from '../src/token/Tokens';
 
 
@@ -38,15 +39,27 @@ const tokenStream = new TokenStream(charStream, errorHandler);
 const parser = new Parser(tokenStream, errorHandler);
 
 try {
-	const printAst = true;
-	if (!printAst) {
+	const action: number = 2;
+	switch (action) {
+	case 0: { // print tokens
 		let tok;
 		while (!((tok = tokenStream.next(false)) instanceof TokenEof)) {
 			console.log(JSON.stringify(tok, null, '  '));
 		}
-	} else {
+		break;
+	}
+	case 1: { // print ast
 		const ast = parser.parse();
 		console.log(JSON.stringify(ast, null, '  '));
+		break;
+	}
+	case 2: { // print code
+		const ast = parser.parse();
+		const target = new NodePrinterStdoutTarget();
+		const printer = new NodeCodePrettyPrinter();
+		printer.print(ast, target);
+		break;
+	}
 	}
 } catch (e) {
 	if (!(e instanceof PositionalError)) {

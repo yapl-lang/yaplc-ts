@@ -44,4 +44,8 @@ export default class String {
 			return '\n' + num;
 		}).substr(1);
 	}
+
+	static escape(str: string): string {
+		return str.replace(/\r\n\t\'\"\\/g, (unused, c) => '\\' + c);
+	}
 }

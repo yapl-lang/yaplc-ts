@@ -96,6 +96,7 @@ export class NodeNumber extends NodeExpression<NodeNumber> {
 export class NodeString extends NodeExpression<NodeString> {
 	type = 'str';
 
+	stringType: string;
 	value: string;
 }
 

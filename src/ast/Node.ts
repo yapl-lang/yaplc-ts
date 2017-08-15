@@ -1,4 +1,5 @@
 import CodePosition from '../CodePosition';
+import NodeVisitor from '../visitor/NodeVisitor';
 
 export default abstract class Node {
 	begin: CodePosition | null = null;
@@ -8,6 +9,10 @@ export default abstract class Node {
 
 	protected constructor(init?: any) {
 		Object.assign(this, init);
+	}
+
+	public visit(visitor: NodeVisitor): void {
+		(<(node: Node) => void>(<any>visitor)[`visit${this.constructor.name}`])(this);
 	}
 
 	public toJSON() {
