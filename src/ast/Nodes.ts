@@ -1,4 +1,5 @@
 import {default as Node, BaseNode} from './Node';
+import {Operator} from '../Operators';
 
 export class NodePackage extends BaseNode<NodePackage> {
 	type = 'package';
@@ -100,4 +101,28 @@ export class NodeString extends NodeExpression<NodeString> {
 	type = 'str';
 
 	value: string;
+}
+
+
+export abstract class NodeOperator<Self extends Node = Node> extends NodeExpression<Self> {
+	op: Operator;
+}
+
+export class NodePrefixUnaryOperator extends NodeOperator<NodePrefixUnaryOperator> {
+	type = 'prefop';
+
+	exp: NodeExpression;
+}
+
+export class NodeSuffixUnaryOperator extends NodeOperator<NodeSuffixUnaryOperator> {
+	type = 'suffop';
+
+	exp: NodeExpression;
+}
+
+export class NodeBinaryOperator extends NodeOperator<NodeBinaryOperator> {
+	type = 'binop';
+
+	left: NodeExpression;
+	right: NodeExpression;
 }

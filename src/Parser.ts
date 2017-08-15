@@ -37,7 +37,11 @@ import {
 	NodeReference,
 	NodeNumber,
 	NodeString,
+	NodePrefixUnaryOperator,
+	NodeSuffixUnaryOperator,
+	NodeBinaryOperator,
 } from './ast/Nodes';
+import {OperatorsMap} from './Operators';
 
 class TokenEqualiter {
 	constructor(readonly type: {new(): Token} | null = null, readonly value: string | null = null) {
@@ -344,11 +348,11 @@ export default class Parser {
 	}
 
 	protected parseStatement(): NodeExpression | NodeVal | NodeVar | null {
-		return this.parseVarOrVal() || this.parseExpression();
+		return this.doParse(this.parseVarOrVal) || this.doParse(this.parseExpression);
 	}
 
 	protected parseExpression(): NodeExpression | null {
-		return this.doParse(() => this.parseMaybeCall(() => this.doParse(this.parseMaybeBinary, this.parseAtom, 0)));
+		return this.doParse(() => this.parseMaybeCall(() => this.doParse(this.parseMaybeBinary, this.doParse(this.parseAtom), 128)));
 	}
 
 	protected parseMaybeCall(calleeGen: (() => Node | null)): NodeCall | NodeExpression | null {
@@ -400,7 +404,7 @@ export default class Parser {
 				value: string
 			});
 		}
-		const identifier = this.parseIdentifier();
+		const identifier = this.doParse(this.parseIdentifier);
 		if (identifier !== null) {
 			return new NodeReference({
 				name: identifier
@@ -409,10 +413,26 @@ export default class Parser {
 		return null;
 	}
 
-	public parseMaybeBinary(left: NodeExpression, leftPrec: number): Node | null {
-		const op = this.take(TokenOperator);
-		if (op !== null) {
-			// TODO: Compare, etc.
+	public parseMaybeBinary(left: NodeExpression, leftPriority: number): Node | null {
+		const op = this.input.peek();
+		if (op instanceof TokenOperator) {
+			const thatOp = OperatorsMap[op.value];
+			let thatPriority = 0;
+			if (thatOp !== null) {
+				thatPriority = thatOp.priority;
+			} else {
+				this.error('Unknown operator', op);
+			}
+			if (thatPriority <= leftPriority) {
+				this.input.next();
+				const right = <NodeBinaryOperator>this.doParse(this.parseMaybeBinary, this.doParse(this.parseAtom), thatPriority);
+				const current = new NodeBinaryOperator({
+					op: thatOp,
+					left: left,
+					right: right,
+				});
+				return this.doParse(this.parseMaybeBinary, current, leftPriority);
+			}
 		}
 		return left;
 	}

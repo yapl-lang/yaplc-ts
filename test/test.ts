@@ -7,7 +7,7 @@ use stdout
 
 fun main args: string: string {
 	print(5.9)
-	print(named: 18)
+	print(named: 18 + 1 * 9)
 }
 
 fun main2 args: string: string
