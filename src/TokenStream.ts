@@ -23,20 +23,19 @@ import {
 import { default as Char, char } from './util/Char';
 
 export default class TokenStream {
-	private readonly input: CharStream;
+	private readonly generator: IterableIterator<Token>;
 	private readonly current: Token[] = [];
 	private previous: Token | null = null;
 	private oldIndent: string = '';
-	private readonly errors: ErrorHandler | null;
+	private singleIndent: string | null = null;
 	private pos: CodePosition;
 
 	get position() {
 		return this.pos;
 	}
 
-	constructor(input: CharStream, errors: ErrorHandler | null = null) {
-		this.input = input;
-		this.errors = errors;
+	constructor(private readonly input: CharStream, private readonly errors: ErrorHandler | null = null) {
+		this.generator = this.read();
 		this.pos = input.position;
 	}
 
@@ -92,108 +91,130 @@ export default class TokenStream {
 		return this.readNumber(beforeComma + (hasComma ? '.' : ''), true, !hasComma);
 	}
 
-	private read(): Token {
-		if (this.input.eof()) {
-			return new TokenEof();
-		}
-		let c = this.input.peek();
-		if (Char.isWhitespaceButNl(c) || this.oldIndent !== '') {
-			const whitespace = this.readWhile(Char.isWhitespaceButNl);
-			if (this.previous instanceof TokenNewline && this.oldIndent !== whitespace) {
-				const len = Math.min(this.oldIndent.length, whitespace.length);
-				if (this.oldIndent.substr(0, len) !== whitespace.substr(0, len)) {
-					this.error('Inconsistent indentation', this.input.position.relative(-whitespace.length), this.input.position);
-				} else {
-					const oldIndent = this.oldIndent;
-					this.oldIndent = whitespace;
-					if (oldIndent.length < whitespace.length) {
-						return new TokenIndent();
+	private *read(): IterableIterator<Token> {
+		while (!this.input.eof()) {
+			let c = this.input.peek();
+			if (Char.isWhitespaceButNl(c) || this.oldIndent !== '') {
+				const whitespace = this.readWhile(Char.isWhitespaceButNl);
+				if (this.previous instanceof TokenNewline && this.oldIndent !== whitespace) {
+					if (this.singleIndent === null) {
+						this.singleIndent = whitespace;
+					}
+					const len = Math.min(this.oldIndent.length, whitespace.length);
+					if (this.oldIndent.substr(0, len) !== whitespace.substr(0, len) ||
+						(len !== 0 && this.oldIndent.substr(len) !== this.singleIndent && whitespace.substr(len) !== this.singleIndent)) {
+						this.error('Inconsistent indentation', this.input.position.relative(-whitespace.length), this.input.position);
 					} else {
-						return new TokenOutdent();
+						const oldIndent = this.oldIndent;
+						this.oldIndent = whitespace;
+						if (oldIndent.length < whitespace.length) {
+							yield new TokenIndent();
+							continue;
+						} else {
+							for (let i = 0; i < (oldIndent.length - len) / this.singleIndent.length; ++i) {
+								yield new TokenOutdent();
+							}
+							continue;
+						}
 					}
 				}
-			}
-			if (whitespace !== '') {
-				return new TokenWhitespace({
-					value: whitespace
-				});
-			}
-		}
-		if (Char.isNewline(c)) {
-			this.input.next();
-			return new TokenNewline();
-		}
-		if (c === ';') {
-			return new TokenSemicolon();
-		}
-		if (TokenPunctuation.CHARS.includes(c)) {
-			return new TokenPunctuation({
-				value: this.input.next()
-			});
-		}
-		if (Char.isOperator(c)) {
-			let iteration = 0, operators = TokenOperator.OPERATORS;
-			while (operators.length !== 1) {
-				c = this.input.peek();
-				const nextOperators = operators.filter(op => op.length > iteration && op[iteration] === c);
-				if (nextOperators.length === 0) {
-					break;
+				if (whitespace !== '') {
+					yield new TokenWhitespace({
+						value: whitespace
+					});
+					continue;
 				}
-				c = this.input.next();
-				operators = nextOperators;
-				++iteration;
 			}
-			operators = operators.filter(op => op.length === iteration);
-			if (operators.length === 0) {
-				throw this.error('Unknown operator', this.input.position.relative(-iteration), this.input.position);
+			if (Char.isNewline(c)) {
+				this.input.next();
+				yield new TokenNewline();
+				continue;
 			}
-			const operator = operators[0];
-			return new TokenOperator({
-				value: operator
-			});
-		}
-		// TODO: Parse named operators(and, or, etc.)
-		if (Char.isIdBegin(c)) {
-			const id = this.readWhile(Char.isIdBody);
-			if (TokenKeyword.KEYWORDS.includes(id)) {
-				return new TokenKeyword({
+			if (c === ';') {
+				yield new TokenSemicolon();
+				continue;
+			}
+			if (TokenPunctuation.CHARS.includes(c)) {
+				yield new TokenPunctuation({
+					value: this.input.next()
+				});
+				continue;
+			}
+			if (Char.isOperator(c)) {
+				let iteration = 0, operators = TokenOperator.OPERATORS;
+				while (operators.length !== 1) {
+					c = this.input.peek();
+					const nextOperators = operators.filter(op => op.length > iteration && op[iteration] === c);
+					if (nextOperators.length === 0) {
+						break;
+					}
+					c = this.input.next();
+					operators = nextOperators;
+					++iteration;
+				}
+				operators = operators.filter(op => op.length === iteration);
+				if (operators.length === 0) {
+					throw this.error('Unknown operator', this.input.position.relative(-iteration), this.input.position);
+				}
+				const operator = operators[0];
+				yield new TokenOperator({
+					value: operator
+				});
+				continue;
+			}
+			// TODO: Parse named operators(and, or, etc.)
+			if (Char.isIdBegin(c)) {
+				const id = this.readWhile(Char.isIdBody);
+				if (TokenKeyword.KEYWORDS.includes(id)) {
+					yield new TokenKeyword({
+						value: id
+					});
+					continue;
+				}
+				yield new TokenIdentifier({
 					value: id
 				});
+				continue;
 			}
-			return new TokenIdentifier({
-				value: id
-			});
-		}
-		if (c === '.') {
-			this.input.next();
-			if (Char.isDigit(this.input.peek())) {
-				return this.readNumber('.', true);
+			if (c === '.') {
+				this.input.next();
+				if (Char.isDigit(this.input.peek())) {
+					yield this.readNumber('.', true);
+					continue;
+				}
+				yield new TokenDot();
+				continue;
 			}
-			return new TokenDot();
+			if (Char.isDigit(c)) {
+				yield this.readNumber();
+				continue;
+			}
+			if (c === '#') {
+				yield new TokenComment({
+					commentType: '#',
+					value: this.readUntil('\n')
+				});
+				continue;
+			}
+			if (c === '\'' || c === '\"') {
+				const type = this.input.next();
+				yield new TokenString({
+					stringType: type,
+					value: this.readUntil(type),
+				});
+				continue;
+			}
+			// TODO: String templates
+			throw this.error('Unexpected ' + c);
 		}
-		if (Char.isDigit(c)) {
-			return this.readNumber();
+		while (true) {
+			yield new TokenEof();
 		}
-		if (c === '#') {
-			return new TokenComment({
-				commentType: '#',
-				value: this.readUntil('\n')
-			});
-		}
-		if (c === '\'' || c === '\"') {
-			const type = this.input.next();
-			return new TokenString({
-				stringType: type,
-				value: this.readUntil(type),
-			});
-		}
-		// TODO: String templates
-		throw this.error('Unexpected ' + c);
 	}
 
 	public peek(skipWhitespace: boolean = true, skipCount: number = 0): Token {
-		if (!skipWhitespace && this.current.length !== 0) {
-			return this.current[0];
+		if (!skipWhitespace && this.current.length > skipCount) {
+			return this.current[skipCount];
 		}
 		for (const tok of this.current) {
 			if (!tok.isWhitespace && skipCount-- === 0) {
@@ -203,7 +224,7 @@ export default class TokenStream {
 
 		while (true) {
 			const begin = this.input.position;
-			const tok = this.read();
+			const tok = this.generator.next().value;
 			this.previous = tok;
 			const end = this.input.position;
 			if (tok !== null) {

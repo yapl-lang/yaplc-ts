@@ -33,8 +33,10 @@ export class NodeTypeReference extends BaseNode<NodeTypeReference> {
 	name: NodeTypeName;
 }
 
+export abstract class NodeExpression<Self extends Node = Node> extends BaseNode<Self> {
+}
 
-export abstract class BaseNodeVal<T> extends BaseNode<T> {
+export abstract class BaseNodeVal<Self extends Node = Node> extends NodeExpression<Self> {
 	name: NodeIdentifier;
 	valType: NodeTypeReference | null;
 	initializer: NodeExpression | null;
@@ -48,17 +50,13 @@ export class NodeVar extends BaseNodeVal<NodeVar> {
 	type = 'var';
 }
 
-
-export abstract class NodeExpression<Self extends Node = Node> extends BaseNode<Self> {
-}
-
 export class NodeFunction extends NodeExpression<NodeFunction> {
 	type = 'fun';
 
 	name: NodeIdentifier | null;
 	arguments: NodeFunctionArgument[];
 	returns: NodeTypeReference[];
-	body: NodeExpression[];
+	body: NodeExpression | null;
 }
 
 export class NodeFunctionArgument extends BaseNode<NodeFunctionArgument> {

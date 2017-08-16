@@ -313,10 +313,8 @@ export default class Parser {
 	protected parseFun(expression: boolean = false): NodeFunction | null {
 		if (this.take(TokenKeyword, 'fun')) {
 			let name = this.doParse(this.parseIdentifier);
-			if (name === null) {
-				if (!expression) {
-					this.error('Function name expected');
-				}
+			if (!expression && name === null) {
+				this.error('Function name expected');
 				name = new NodeIdentifier({
 					name: ''
 				});
@@ -334,7 +332,7 @@ export default class Parser {
 				name: name,
 				arguments: args,
 				returns: returns,
-				body: this.enterBlock(this.parseStatement),
+				body: this.doParse(this.parseExpressionalBlock),
 			})
 		}
 		return null;
@@ -358,6 +356,20 @@ export default class Parser {
 
 	protected parseExpression(canBlock: boolean = false): NodeExpression | null {
 		return this.doParse(() => this.parseMaybeUnary(() => this.parseMaybeCall(() => this.doParse(this.parseMaybeBinary, this.doParse(this.parseAtom, canBlock), 128))));
+	}
+
+	protected parseExpressionalBlock(): NodeExpression | null {
+		const exps = this.enterBlock(this.parseStatement);
+		switch (exps.length) {
+		case 0:
+			return null;
+		case 1:
+			return exps[0];
+		default:
+			return new NodeBlock({
+				expressions: exps
+			});
+		}
 	}
 
 	protected parseMaybeCall(calleeGen: (() => Node | null)): NodeCall | NodeExpression | null {
@@ -492,17 +504,17 @@ export default class Parser {
 
 	public parseIf(): NodeIf | null {
 		if (this.take(TokenKeyword, 'if')) {
-			const condition = this.doParse(this.parseExpression);
+			const condition = this.doParse(this.parseExpressionalBlock);
 			if (condition === null) {
 				throw this.error('Condition expected');
 			}
 			this.take(TokenKeyword, 'then');
-			const then = this.doParse(this.parseExpression);
+			const then = this.doParse(this.parseExpressionalBlock);
 			if (then === null) {
 				throw this.error('Expression expected');
 			}
 			let elsee = null;
-			if (this.take(TokenKeyword, 'else') && (elsee = this.doParse(this.parseExpression)) === null) {	
+			if (this.take(TokenKeyword, 'else') && (elsee = this.doParse(this.parseExpressionalBlock)) === null) {	
 				throw this.error('Expression expected');
 			}
 			return new NodeIf({

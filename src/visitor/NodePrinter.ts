@@ -162,11 +162,15 @@ export class NodeCodePrettyPrinter extends NodePrettyPrinter {
 		if (node.package !== null) {
 			this.nl('package ', node.package).nl();
 		}
-		node.body.forEach(sub => this.nl(sub));
+		node.body.forEach(sub => this.nl(sub).nl());
 	}
 
 	visitNodeUse(node: NodeUse): void {
-		this.nl('use ', node.name, ' as ', node.alias);
+		if (node.name.substr(node.name.length - node.alias.length - 1) === '.' + node.alias || node.name == node.alias) {
+			this.a('use ', node.name);
+		} else {
+			this.a('use ', node.name, ' as ', node.alias);
+		}
 	}
 
 	visitNodeTypeName(node: NodeTypeName): void {
@@ -218,7 +222,7 @@ export class NodeCodePrettyPrinter extends NodePrettyPrinter {
 				this.a('(', ArrayUtil.fillBetween<any>(node.returns, ', '), ')');
 			}
 		}
-		this.a(' ').block(() => node.body.forEach(sub => this.nl(sub)));
+		this.a(' ', node.body);
 	}
 
 	visitNodeFunctionArgument(node: NodeFunctionArgument): void {
@@ -268,7 +272,6 @@ export class NodeCodePrettyPrinter extends NodePrettyPrinter {
 		if (node.else !== null) {
 			this.a('else ', node.else);
 		}
-		this.nl();
 	}
 
 	visitNodeBlock(node: NodeBlock): void {
