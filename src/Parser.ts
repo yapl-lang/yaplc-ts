@@ -313,8 +313,10 @@ export default class Parser {
 	protected parseFun(expression: boolean = false): NodeFunction | null {
 		if (this.take(TokenKeyword, 'fun')) {
 			let name = this.doParse(this.parseIdentifier);
-			if (!expression && name === null) {
-				this.error('Function name expected');
+			if (name === null) {
+				if (!expression) {
+					this.error('Function name expected');
+				}
 				name = new NodeIdentifier({
 					name: ''
 				});
