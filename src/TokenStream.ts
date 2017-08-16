@@ -1,7 +1,7 @@
 import CharStream from './CharStream';
 import CodePosition from './CodePosition';
 import Token from './token/Token';
-import Error from './error/Error';
+import CompilerError from './error/Error';
 import SyntaxError from './error/SyntaxError';
 import ErrorHandler from './error/ErrorHandler';
 import {
@@ -29,6 +29,8 @@ export default class TokenStream {
 	private oldIndent: string = '';
 	private singleIndent: string | null = null;
 	private pos: CodePosition;
+	private whitespaceHandler: ((token: Token) => void) | null = null;
+	private whitespaceHandlers: (((token: Token) => void) | null)[] = [];
 
 	get position() {
 		return this.pos;
@@ -37,6 +39,71 @@ export default class TokenStream {
 	constructor(private readonly input: CharStream, private readonly errors: ErrorHandler | null = null) {
 		this.generator = this.read();
 		this.pos = input.position;
+	}
+
+	public pushWhitespaceHandler(handler: (token: Token) => void) {
+		this.whitespaceHandlers.push(this.whitespaceHandler);
+		this.whitespaceHandler = handler;
+	}
+
+	public popWhitespaceHandler() {
+		const handler = this.whitespaceHandlers.pop();
+		if (handler === undefined) {
+			throw new Error('Whitespace handler stack overflow');
+		}
+		this.whitespaceHandler = handler;
+	}
+
+	public peek(skipWhitespace: boolean = true, skipCount: number = 0): Token {
+		if (!skipWhitespace && this.current.length > skipCount) {
+			return this.current[skipCount];
+		}
+		for (const tok of this.current) {
+			if (!tok.isWhitespace && skipCount-- === 0) {
+				return tok;
+			}
+		}
+
+		while (true) {
+			const begin = this.input.position;
+			const tok = this.generator.next().value;
+			this.previous = tok;
+			const end = this.input.position;
+			if (tok !== null) {
+				tok.begin = begin;
+				tok.end = end;
+			}
+			this.current.push(tok);
+			if ((!skipWhitespace || !tok.isWhitespace) && skipCount-- === 0) {
+				return tok;
+			}
+		}
+	}
+
+	public next(skipWhitespace: boolean = true): Token {
+		const tok = this.peek(skipWhitespace);
+		while (this.current.length !== 0) {
+			const tok2 = <Token>this.current.shift();
+			if (tok2 === tok) {
+				break;
+			}
+			this.whitespaceHandler && this.whitespaceHandler(tok2);
+		}
+		this.pos = tok.end;
+		return tok;
+	}
+
+	public eof(): boolean {
+		return this.peek() instanceof TokenEof;
+	}
+
+	private error(message: string, begin: CodePosition | null = null, end: CodePosition | null = null): CompilerError {
+		if (begin === null) {
+			begin = this.input.position;
+		}
+		const error = new SyntaxError(message, begin, end);
+		this.errors && this.errors.error(error);
+		return error;
 	}
 
 	private readWhile(...call: ((c: string, i: number) => boolean)[]): string {
@@ -210,55 +277,5 @@ export default class TokenStream {
 		while (true) {
 			yield new TokenEof();
 		}
-	}
-
-	public peek(skipWhitespace: boolean = true, skipCount: number = 0): Token {
-		if (!skipWhitespace && this.current.length > skipCount) {
-			return this.current[skipCount];
-		}
-		for (const tok of this.current) {
-			if (!tok.isWhitespace && skipCount-- === 0) {
-				return tok;
-			}
-		}
-
-		while (true) {
-			const begin = this.input.position;
-			const tok = this.generator.next().value;
-			this.previous = tok;
-			const end = this.input.position;
-			if (tok !== null) {
-				tok.begin = begin;
-				tok.end = end;
-			}
-			this.current.push(tok);
-			if ((!skipWhitespace || !tok.isWhitespace) && skipCount-- === 0) {
-				return tok;
-			}
-		}
-	}
-
-	public next(skipWhitespace: boolean = true): Token {
-		const tok = this.peek(skipWhitespace);
-		while (this.current.length !== 0) {
-			if (this.current.shift() === tok) {
-				break;
-			}
-		}
-		this.pos = tok.end;
-		return tok;
-	}
-
-	public eof(): boolean {
-		return this.peek() instanceof TokenEof;
-	}
-
-	private error(message: string, begin: CodePosition | null = null, end: CodePosition | null = null): Error {
-		if (begin === null) {
-			begin = this.input.position;
-		}
-		const error = new SyntaxError(message, begin, end);
-		this.errors && this.errors.error(error);
-		return error;
 	}
 }

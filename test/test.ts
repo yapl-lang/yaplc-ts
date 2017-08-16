@@ -39,7 +39,7 @@ const tokenStream = new TokenStream(charStream, errorHandler);
 const parser = new Parser(tokenStream, errorHandler);
 
 try {
-	const action: number = 2;
+	const action: number = 1;
 	switch (action) {
 	case 0: { // print tokens
 		let tok;

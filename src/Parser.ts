@@ -66,15 +66,22 @@ export default class Parser {
 		const oldBegin = this.currentNodeBegin;
 		this.currentNodeBegin = null;
 		const begin = this.input.position;
-		const node = <T>method.call(this, ...args);
-		if (node === null) {
-			return null;
+		const whitespaces: Token[] = [];
+		this.input.pushWhitespaceHandler(token => whitespaces.push(token));
+		try {
+			const node = <T>method.call(this, ...args);
+			if (node === null) {
+				return null;
+			}
+			const end = this.input.position;
+			node.whitespaces = whitespaces;
+			node.begin = node.begin || this.currentNodeBegin || begin;
+			node.end = node.end || end;
+			this.currentNodeBegin = oldBegin;
+			return node;
+		} finally {
+			this.input.popWhitespaceHandler();
 		}
-		const end = this.input.position;
-		node.begin = node.begin || this.currentNodeBegin || begin;
-		node.end = node.end || end;
-		this.currentNodeBegin = oldBegin;
-		return node;
 	}
 
 	protected skip<T extends Token>(constructor: {new(): T} | null = null, value: string[] | string | null = null, field: string | null = 'value', skipWhitespace: boolean = true): T | string {

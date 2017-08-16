@@ -1,7 +1,9 @@
+import Token from '../token/Token';
 import CodePosition from '../CodePosition';
 import NodeVisitor from '../visitor/NodeVisitor';
 
 export default abstract class Node {
+	whitespaces: Token[] = [];
 	begin: CodePosition | null = null;
 	end: CodePosition | null = null;
 
