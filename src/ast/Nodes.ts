@@ -23,14 +23,20 @@ export class NodeTypeName extends BaseNode<NodeTypeName> {
 
 export class NodeIdentifier extends BaseNode<NodeIdentifier> {
 	type = 'id';
-
 	name: string;
 }
 
-export class NodeTypeReference extends BaseNode<NodeTypeReference> {
-	type = 'typeref';
+export abstract class NodeTypeReference<Self extends Node = Node> extends BaseNode<Self> {
+}
 
+export class NodeNamedTypeReference extends NodeTypeReference<NodeNamedTypeReference> {
+	type = 'named-typeref';
 	name: NodeTypeName;
+}
+
+export class NodeLambdaTypeReference extends NodeTypeReference<NodeLambdaTypeReference> {
+	type = 'lambda-typeref';
+	func: NodeFunction;
 }
 
 export abstract class NodeExpression<Self extends Node = Node> extends BaseNode<Self> {
@@ -62,7 +68,7 @@ export class NodeFunction extends NodeExpression<NodeFunction> {
 export class NodeFunctionArgument extends BaseNode<NodeFunctionArgument> {
 	type = 'funarg';
 
-	name: NodeIdentifier;
+	name: NodeIdentifier | null;
 	targetType: NodeTypeReference | null;
 }
 

@@ -26,6 +26,8 @@ import {
 	NodeIdentifier,
 	NodeTypeName,
 	NodeTypeReference,
+	NodeNamedTypeReference,
+	NodeLambdaTypeReference,
 	NodeVal,
 	NodeVar,
 	NodeFunction,
@@ -268,10 +270,19 @@ export default class Parser {
 	}
 
 	protected parseTypeRef(): NodeTypeReference | null {
+		if (this.is(TokenKeyword, 'fun')) {
+			const func = this.doParse(this.parseFun, true, false);
+			if (func === null) {
+				throw this.error('Expected function template', this.input.peek(true, 1));
+			}
+			return new NodeLambdaTypeReference({
+				func: func
+			});
+		}
 		const type = this.doParse(this.parseTypeName);
 		if (type !== null) {
-			// TODO: Parse things like generics(templates) and arrays and lambdas
-			return new NodeTypeReference({
+			// TODO: Parse things like generics(templates) and arrays
+			return new NodeNamedTypeReference({
 				name: type,
 			});
 		}
@@ -317,7 +328,7 @@ export default class Parser {
 		});
 	}
 
-	protected parseFun(expression: boolean = false): NodeFunction | null {
+	protected parseFun(expression: boolean = false, hasBody: boolean = true): NodeFunction | null {
 		if (this.take(TokenKeyword, 'fun')) {
 			let name = this.doParse(this.parseIdentifier);
 			if (!expression && name === null) {
@@ -339,7 +350,7 @@ export default class Parser {
 				name: name,
 				arguments: args,
 				returns: returns,
-				body: this.doParse(this.parseExpressionalBlock),
+				body: hasBody ? this.doParse(this.parseExpressionalBlock) : null,
 			})
 		}
 		return null;

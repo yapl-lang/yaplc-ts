@@ -7,7 +7,7 @@ use stdout
 
 val loggingEnabled = true
 
-fun log call: lambda
+fun log call: fun(): string
 	if loggingEnabled
 		print(call())
 
