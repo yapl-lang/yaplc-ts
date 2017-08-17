@@ -182,7 +182,7 @@ export class NodeCodePrettyPrinter extends NodePrettyPrinter {
 	}
 
 	visitNodeTypeReference(node: NodeTypeReference): void {
-		this.a(node.name);
+		//this.a(node.name);
 	}
 
 	visitNodeVal(node: NodeVal): void {

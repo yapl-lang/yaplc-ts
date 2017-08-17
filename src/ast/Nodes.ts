@@ -39,6 +39,12 @@ export class NodeLambdaTypeReference extends NodeTypeReference<NodeLambdaTypeRef
 	func: NodeFunction;
 }
 
+export class NodeArrayTypeReference extends NodeTypeReference<NodeArrayTypeReference> {
+	type = 'array-typeref';
+	target: NodeTypeReference;
+	dimensions: (NodeExpression | null)[];
+}
+
 export abstract class NodeExpression<Self extends Node = Node> extends BaseNode<Self> {
 }
 

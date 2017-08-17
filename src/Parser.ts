@@ -28,6 +28,7 @@ import {
 	NodeTypeReference,
 	NodeNamedTypeReference,
 	NodeLambdaTypeReference,
+	NodeArrayTypeReference,
 	NodeVal,
 	NodeVar,
 	NodeFunction,
@@ -279,9 +280,23 @@ export default class Parser {
 				func: func
 			});
 		}
+		if (this.is(TokenPunctuation, '[')) {
+			const dimensions = this.delimited(() => this.parseExpression(),
+				{type: TokenPunctuation, value: '['},
+				{type: TokenPunctuation, value: ','},
+				{type: TokenPunctuation, value: ']'})
+			const nextType = this.doParse(this.parseTypeRef);
+			if (nextType === null) {
+				throw this.error('Type expected');
+			}
+			return new NodeArrayTypeReference({
+				target: nextType,
+				dimensions
+			});
+		}
 		const type = this.doParse(this.parseTypeName);
 		if (type !== null) {
-			// TODO: Parse things like generics(templates) and arrays
+			// TODO: Parse things like generics(templates)
 			return new NodeNamedTypeReference({
 				name: type,
 			});

@@ -6,6 +6,9 @@ use stdout
   My comment
 
 val loggingEnabled = true
+val testArray: [10]string # Auto-initialized array with 10 string-references with default non-null value(empty string)
+val testArrayOfArray: [4][4]float # 4x4 array of floats. In memory will be stored as four references to arrays of four elements of float type
+val testMatrix: [4, 4]float # 4x4 array of floats. In memory will be stored together: 16 elements of float type; static array
 
 fun log call: fun(): string
 	if loggingEnabled
