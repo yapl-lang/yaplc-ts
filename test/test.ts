@@ -14,7 +14,13 @@ fun log call: fun(): string
 	if loggingEnabled
 		print(call())
 
-fun main args: string: string {
+# DOCs maybe that, but also may be changed
+###
+ # main is an entry function in any program
+ # @param args Command-line arguments
+ # @return status, 0 means success
+###
+fun main args: []string: int {
 	val a = 5
 	--a
 	print(a)
