@@ -4,7 +4,9 @@ import {
 	NodeUse,
 	NodeIdentifier,
 	NodeTypeName,
-	NodeTypeReference,
+	NodeNamedTypeReference,
+	NodeLambdaTypeReference,
+	NodeArrayTypeReference,
 	NodeVal,
 	NodeVar,
 	NodeFunction,
@@ -181,8 +183,28 @@ export class NodeCodePrettyPrinter extends NodePrettyPrinter {
 		this.a(node.name);
 	}
 
-	visitNodeTypeReference(node: NodeTypeReference): void {
-		//this.a(node.name);
+
+	visitNodeNamedTypeReference(node: NodeNamedTypeReference): void {
+		this.a(node.name);
+	}
+
+	visitNodeLambdaTypeReference(node: NodeLambdaTypeReference): void {
+		const func = node.func;
+		this.a('fun(', func.arguments, ')');
+		switch (func.returns.length) {
+		case 0:
+			break;
+		case 1:
+			this.a(': ', func.returns[0]);
+			break;
+		default:
+			this.a(': (', func.returns, ')');
+			break;
+		}
+	}
+
+	visitNodeArrayTypeReference(node: NodeArrayTypeReference): void {
+		this.a('[', ArrayUtil.fillBetween<any>(node.dimensions, ', '), ']', node.target);
 	}
 
 	visitNodeVal(node: NodeVal): void {

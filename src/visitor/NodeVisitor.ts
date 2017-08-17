@@ -3,7 +3,9 @@ import {
 	NodeUse,
 	NodeIdentifier,
 	NodeTypeName,
-	NodeTypeReference,
+	NodeNamedTypeReference,
+	NodeLambdaTypeReference,
+	NodeArrayTypeReference,
 	NodeVal,
 	NodeVar,
 	NodeFunction,
@@ -26,7 +28,9 @@ export default abstract class NodeVisitor {
 	abstract visitNodeUse(node: NodeUse): void;
 	abstract visitNodeTypeName(node: NodeTypeName): void;
 	abstract visitNodeIdentifier(node: NodeIdentifier): void;
-	abstract visitNodeTypeReference(node: NodeTypeReference): void;
+	abstract visitNodeNamedTypeReference(node: NodeNamedTypeReference): void;
+	abstract visitNodeLambdaTypeReference(node: NodeLambdaTypeReference): void;
+	abstract visitNodeArrayTypeReference(node: NodeArrayTypeReference): void;
 	abstract visitNodeVal(node: NodeVal): void;
 	abstract visitNodeVar(node: NodeVar): void;
 	abstract visitNodeFunction(node: NodeFunction): void;
