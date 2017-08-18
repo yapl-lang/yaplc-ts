@@ -18,6 +18,7 @@ import {
 	NodeReference,
 	NodeNumber,
 	NodeString,
+	NodeStringTemplate,
 	NodePrefixUnaryOperator,
 	NodeSuffixUnaryOperator,
 	NodeBinaryOperator,
@@ -280,6 +281,10 @@ export class NodeCodePrettyPrinter extends NodePrettyPrinter {
 
 	visitNodeString(node: NodeString): void {
 		this.a(node.stringType, StringUtil.escape(node.value), node.stringType);
+	}
+
+	visitNodeStringTemplate(node: NodeStringTemplate): void {
+		this.a('`', node.expressions, '`')
 	}
 
 	visitNodePrefixUnaryOperator(node: NodePrefixUnaryOperator): void {

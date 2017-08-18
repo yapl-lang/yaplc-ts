@@ -17,6 +17,7 @@ import {
 	NodeReference,
 	NodeNumber,
 	NodeString,
+	NodeStringTemplate,
 	NodePrefixUnaryOperator,
 	NodeSuffixUnaryOperator,
 	NodeBinaryOperator,
@@ -42,6 +43,7 @@ export default abstract class NodeVisitor {
 	abstract visitNodeReference(node: NodeReference): void;
 	abstract visitNodeNumber(node: NodeNumber): void;
 	abstract visitNodeString(node: NodeString): void;
+	abstract visitNodeStringTemplate(node: NodeStringTemplate): void;
 	abstract visitNodePrefixUnaryOperator(node: NodePrefixUnaryOperator): void;
 	abstract visitNodeSuffixUnaryOperator(node: NodeSuffixUnaryOperator): void;
 	abstract visitNodeBinaryOperator(node: NodeBinaryOperator): void;

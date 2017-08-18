@@ -271,7 +271,6 @@ export default class TokenStream {
 				});
 				continue;
 			}
-			// TODO: String templates
 			throw this.error('Unexpected ' + c);
 		}
 		while (true) {

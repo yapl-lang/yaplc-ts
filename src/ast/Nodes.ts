@@ -98,13 +98,11 @@ export class NodeCallArgument extends BaseNode<NodeCallArgument> {
 
 export class NodeReference extends NodeExpression<NodeReference> {
 	type = 'ref';
-
 	name: NodeIdentifier | null;
 }
 
 export class NodeNumber extends NodeExpression<NodeNumber> {
 	type = 'num';
-
 	value: string;
 }
 
@@ -113,6 +111,11 @@ export class NodeString extends NodeExpression<NodeString> {
 
 	stringType: string;
 	value: string;
+}
+
+export class NodeStringTemplate extends NodeExpression<NodeStringTemplate> {
+	type = 'str-tmpl';
+	expressions: NodeExpression[];
 }
 
 

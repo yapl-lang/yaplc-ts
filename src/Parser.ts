@@ -40,6 +40,7 @@ import {
 	NodeReference,
 	NodeNumber,
 	NodeString,
+	NodeStringTemplate,
 	NodePrefixUnaryOperator,
 	NodeSuffixUnaryOperator,
 	NodeBinaryOperator,
@@ -451,6 +452,23 @@ export default class Parser {
 		});
 	}
 
+	protected parseStringTemplate(): NodeStringTemplate | null {
+		if (this.take(TokenPunctuation, '`')) {
+			const expressions = [];
+			while (!this.take(TokenPunctuation, '`')) {
+				const exp = this.doParse(this.parseExpression);
+				if (exp === null) {
+					throw this.error('Expression expected');
+				}
+				expressions.push(exp);
+			}
+			return new NodeStringTemplate({
+				expressions: expressions
+			});
+		}
+		return null;
+	}
+
 	protected parseAtom(canBlock: boolean = false): Node | null {
 		if (this.take(TokenPunctuation, '(')) {
 			const exp = this.doParse(this.parseExpression);
@@ -472,6 +490,9 @@ export default class Parser {
 				stringType: string.stringType,
 				value: string.value,
 			});
+		}
+		if (this.is(TokenPunctuation, '`')) {
+			return this.doParse(this.parseStringTemplate);
 		}
 		const identifier = this.doParse(this.parseIdentifier);
 		if (identifier !== null) {

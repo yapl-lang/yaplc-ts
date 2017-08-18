@@ -25,7 +25,7 @@ fun main args: []string: int {
 	--a
 	print(a)
 	print(named: 18 + 1 * 9)
-	log(fun 'hello')
+	log(fun \`'My number is 'a' and this is logged using string template'\`)
 }
 
 fun main2 args: string: string

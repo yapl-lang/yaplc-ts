@@ -34,7 +34,7 @@ export class TokenSemicolon extends BaseToken<TokenSemicolon> {
 }
 
 export class TokenPunctuation extends BaseToken<TokenPunctuation> {
-	static CHARS: string = ',(){}[]';
+	static CHARS: string = ',`(){}[]';
 
 	type = 'punc';
 	value: char;
