@@ -15,6 +15,11 @@ export class NodeUse extends BaseNode<NodeUse> {
 	alias: string;
 }
 
+export class NodeUseAll extends BaseNode<NodeUseAll> {
+	type = 'use';
+	package: string;
+}
+
 export class NodeTypeName extends BaseNode<NodeTypeName> {
 	type = 'typename';
 

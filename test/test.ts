@@ -1,6 +1,6 @@
 const testInput = `package yapl.test
 
-use stdout
+use stdout.*
 
 # Hello, \\
   My comment

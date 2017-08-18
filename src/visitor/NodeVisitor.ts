@@ -1,6 +1,7 @@
 import {
 	NodePackage,
 	NodeUse,
+	NodeUseAll,
 	NodeIdentifier,
 	NodeTypeName,
 	NodeNamedTypeReference,
@@ -26,6 +27,7 @@ import {
 export default abstract class NodeVisitor {
 	abstract visitNodePackage(node: NodePackage): void;
 	abstract visitNodeUse(node: NodeUse): void;
+	abstract visitNodeUseAll(node: NodeUseAll): void;
 	abstract visitNodeTypeName(node: NodeTypeName): void;
 	abstract visitNodeIdentifier(node: NodeIdentifier): void;
 	abstract visitNodeNamedTypeReference(node: NodeNamedTypeReference): void;

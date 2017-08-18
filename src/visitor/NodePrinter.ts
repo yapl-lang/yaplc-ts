@@ -2,6 +2,7 @@ import Node from '../ast/Node';
 import {
 	NodePackage,
 	NodeUse,
+	NodeUseAll,
 	NodeIdentifier,
 	NodeTypeName,
 	NodeNamedTypeReference,
@@ -173,6 +174,10 @@ export class NodeCodePrettyPrinter extends NodePrettyPrinter {
 		} else {
 			this.a('use ', node.name, ' as ', node.alias);
 		}
+	}
+
+	visitNodeUseAll(node: NodeUseAll): void {
+		this.a('use ', node.package, '.*');
 	}
 
 	visitNodeTypeName(node: NodeTypeName): void {

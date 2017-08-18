@@ -23,6 +23,7 @@ import Node from './ast/Node';
 import {
 	NodePackage,
 	NodeUse,
+	NodeUseAll,
 	NodeIdentifier,
 	NodeTypeName,
 	NodeTypeReference,
@@ -312,15 +313,27 @@ export default class Parser {
 		});
 	}
 
-	protected parseUse(): NodeUse | null {
+	protected parseUse(): NodeUse | NodeUseAll | null {
 		if (!this.take(TokenKeyword, 'use')) {
 			return null;
 		}
-		const id = this.takeArrayDottedId();
-		// TODO: Handle as and multiple use
+		const pack = [<string>this.skip(TokenIdentifier)];
+		while (this.take(TokenDot)) {
+			if (this.take(TokenOperator, '*')) {
+				return new NodeUseAll({
+					package: pack.join('.')
+				});
+			}
+			let id = <string | null>this.take(TokenIdentifier);
+			if (id === null) {
+				throw this.error('Expected identifier or *');
+			}
+			pack.push(id);
+		}
+		const alias = this.take(TokenKeyword, 'as') ? <string>this.skip(TokenIdentifier) : pack[pack.length - 1];
 		return new NodeUse({
-			name: id.join('.'),
-			alias: id[id.length - 1],
+			name: pack.join('.'),
+			alias: alias,
 		});
 	}
 

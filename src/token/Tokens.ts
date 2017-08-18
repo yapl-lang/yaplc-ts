@@ -54,6 +54,7 @@ export class TokenKeyword extends BaseToken<TokenKeyword> {
 		'var',
 		'val',
 		'use',
+		'as',
 
 		'if',
 		'then',
