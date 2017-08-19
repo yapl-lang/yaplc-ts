@@ -1,4 +1,5 @@
 import Node from '../ast/Node';
+import {Operator} from '../Operators';
 import NodePrettyPrinter from './NodePrettyPrinter';
 
 export default class NodeAstPrinter extends NodePrettyPrinter {
@@ -24,6 +25,8 @@ export default class NodeAstPrinter extends NodePrettyPrinter {
 			}));
 		} else if (value instanceof Node) {
 			this.a(value);
+		} else if (value instanceof Operator) {
+			this.nl(value.name, ' (', value.value, ')');
 		} else {
 			this.nl(value);
 		}
