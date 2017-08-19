@@ -47,14 +47,29 @@ export class TokenOperator extends BaseToken<TokenOperator> {
 	value: char;
 }
 
+export class TokenModifier extends BaseToken<TokenModifier> {
+	static MODIFIERS: string[] = [
+		'priv',
+		'prot',
+		'publ',
+
+		'test',
+	];
+
+	type = 'mod';
+	value: string;
+}
+
 export class TokenKeyword extends BaseToken<TokenKeyword> {
 	static KEYWORDS: string[] = [
 		'package',
-		'fun',
-		'var',
-		'val',
 		'use',
 		'as',
+
+		'var',
+		'val',
+		'fun',
+		'class',
 
 		'if',
 		'then',

@@ -13,6 +13,7 @@ import {
 	TokenSemicolon,
 	TokenPunctuation,
 	TokenOperator,
+	TokenModifier,
 	TokenKeyword,
 	TokenIdentifier,
 	TokenDot,
@@ -232,6 +233,12 @@ export default class TokenStream {
 			// TODO: Parse named operators(and, or, etc.)
 			if (Char.isIdBegin(c)) {
 				const id = this.readWhile(Char.isIdBody);
+				if (TokenModifier.MODIFIERS.includes(id)) {
+					yield new TokenModifier({
+						value: id
+					});
+					continue;
+				}
 				if (TokenKeyword.KEYWORDS.includes(id)) {
 					yield new TokenKeyword({
 						value: id

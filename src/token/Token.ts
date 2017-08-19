@@ -23,6 +23,10 @@ export default abstract class Token {
 		});
 		return result;
 	}
+
+	public toString(): string {
+		return JSON.stringify(this);
+	}
 }
 
 export abstract class BaseToken<Self> extends Token {

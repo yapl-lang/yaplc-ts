@@ -53,8 +53,18 @@ export class NodeArrayTypeReference extends NodeTypeReference<NodeArrayTypeRefer
 export abstract class NodeExpression<Self extends Node = Node> extends BaseNode<Self> {
 }
 
-export abstract class BaseNodeVal<Self extends Node = Node> extends NodeExpression<Self> {
-	name: NodeIdentifier;
+export class NodeDefinitionModifier extends BaseNode<NodeDefinitionModifier> {
+	type = 'def-mod';
+
+	value: string;
+}
+
+export abstract class NodeDefinition<Self extends Node = Node> extends NodeExpression<Self> {
+	modifiers: NodeDefinitionModifier[];
+	name: NodeTypeName | null;
+}
+
+export abstract class BaseNodeVal<Self extends Node = Node> extends NodeDefinition<Self> {
 	valType: NodeTypeReference | null;
 	initializer: NodeExpression | null;
 }
@@ -67,10 +77,9 @@ export class NodeVar extends BaseNodeVal<NodeVar> {
 	type = 'var';
 }
 
-export class NodeFunction extends NodeExpression<NodeFunction> {
+export class NodeFunction extends NodeDefinition<NodeFunction> {
 	type = 'fun';
 
-	name: NodeIdentifier | null;
 	arguments: NodeFunctionArgument[];
 	returns: NodeTypeReference[];
 	body: NodeExpression | null;
@@ -82,6 +91,12 @@ export class NodeFunctionArgument extends BaseNode<NodeFunctionArgument> {
 	name: NodeIdentifier | null;
 	targetType: NodeTypeReference | null;
 }
+
+export class NodeClass extends NodeDefinition<NodeClass> {
+	type = 'class';
+	children: NodeDefinition[];
+}
+
 
 export class NodeCall extends NodeExpression<NodeCall> {
 	type = 'call';

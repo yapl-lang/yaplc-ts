@@ -1,4 +1,4 @@
-const testInput = `package yapl.test
+const testInput = `package yapl.devtest
 
 use stdout.*
 
@@ -31,6 +31,10 @@ fun main args: []string: int {
 fun main2 args: string: string
 	print(18.64)
 	print(named: 15.84E-5)
+
+publ class TestClass
+	fun method = null
+
 `;
 
 import ArrayErrorHandler from '../src/error/ArrayErrorHandler';

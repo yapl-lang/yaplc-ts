@@ -12,6 +12,7 @@ import {
 	TokenWhitespace,
 	TokenPunctuation,
 	TokenOperator,
+	TokenModifier,
 	TokenKeyword,
 	TokenIdentifier,
 	TokenDot,
@@ -30,11 +31,14 @@ import {
 	NodeNamedTypeReference,
 	NodeLambdaTypeReference,
 	NodeArrayTypeReference,
+	NodeExpression,
+	NodeDefinitionModifier,
+	NodeDefinition,
 	NodeVal,
 	NodeVar,
 	NodeFunction,
 	NodeFunctionArgument,
-	NodeExpression,
+	NodeClass,
 	NodeCall,
 	NodeCallArgument,
 	NodeReference,
@@ -82,50 +86,34 @@ export default class Parser {
 			node.whitespaces = whitespaces;
 			node.begin = node.begin || this.currentNodeBegin || begin;
 			node.end = node.end || end;
-			this.currentNodeBegin = oldBegin;
 			return node;
 		} finally {
+			this.currentNodeBegin = oldBegin;
 			this.input.popWhitespaceHandler();
 		}
 	}
 
-	protected skip<T extends Token>(constructor: {new(): T} | null = null, value: string[] | string | null = null, field: string | null = 'value', skipWhitespace: boolean = true): T | string {
-		if (!this.is<T>(constructor, value, field, skipWhitespace)) {
-			throw this.error(`Expected ${value === null ? constructor === null ? '' : constructor.name : value}`, this.input.peek());
+	protected parseOf<T extends Node>(...call: ((c: Token) => T | null)[]): T | null {
+		let node = null;
+		const tok = this.input.peek();
+		for (const acall of call) {
+			if ((node = this.doParse<T>(acall, tok)) !== null) {
+				if (tok === this.input.peek()) {
+					this.take();
+					node.end = this.input.position;
+				}
+				break;
+			} else if (tok !== this.input.peek()) {
+				throw this.error(`Internal parser error: parseOf call took token but returned null; call: ${call}, token: ${tok}`);
+			}
 		}
-		return <T | string>this.take<T>(constructor, value, field, skipWhitespace);
+		return node;
 	}
 
-	protected take<T extends Token>(constructor: {new(): T} | null = null, value: string[] | string | null = null, field: string | null = 'value', skipWhitespace: boolean = true): T | string | null {
-		if (!this.is<T>(constructor, value, field, skipWhitespace)) {
-			return null;
-		}
-		if (this.currentNodeBegin === null) {
-			this.currentNodeBegin = this.input.peek().begin;
-		}
-		const tok = <T>this.input.next(skipWhitespace);
-		if (field) {
-			return (<any>tok)[field] || tok;
-		}
-		return tok;
-	}
-
-	protected is<T extends Token>(constructor: {new(): T} | null = null, value: string[] | string | null = null, field: string | null = 'value', skipWhitespace: boolean = true, skipCount: number = 0): boolean {
-		const tok = this.input.peek(skipWhitespace, skipCount);
-		return (constructor === null || tok instanceof constructor)
-			&& (typeof value !== 'string' || (<any>tok)[field || 'value'] === value)
-			&& (!(value instanceof Array) || value.includes((<any>tok)[field || 'value']));
-	}
-
-	protected while<T extends Node>(...call: ((c: Token, i: number) => T | null)[]): T[] {
+	protected while<T extends Node>(...call: ((c: Token) => T | null)[]): T[] {
 		const result: T[] = [];
 		while (true) {
-			let node = null;
-			for (const acall of call) {
-				if ((node = this.doParse<T>(acall, this.input.peek(), result.length)) !== null) {
-					break;
-				}
-			}
+			const node = this.parseOf(...call);
 			if (node === null) {
 				break;
 			}
@@ -165,6 +153,34 @@ export default class Parser {
 			this.skip(after.type, after.value);
 		}
 		return result;
+	}
+
+	protected skip<T extends Token>(constructor: {new(): T} | null = null, value: string[] | string | null = null, field: string | null = 'value', skipWhitespace: boolean = true): T | string {
+		if (!this.is<T>(constructor, value, field, skipWhitespace)) {
+			throw this.error(`Expected ${value === null ? constructor === null ? '' : constructor.name : value}`, this.input.peek());
+		}
+		return <T | string>this.take<T>(null, null, field, skipWhitespace);
+	}
+
+	protected take<T extends Token>(constructor: {new(): T} | null = null, value: string[] | string | null = null, field: string | null = 'value', skipWhitespace: boolean = true): T | string | null {
+		if (!this.is<T>(constructor, value, field, skipWhitespace)) {
+			return null;
+		}
+		if (this.currentNodeBegin === null && !this.input.peek().isWhitespace) {
+			this.currentNodeBegin = this.input.peek().begin;
+		}
+		const tok = <T>this.input.next(skipWhitespace);
+		if (field) {
+			return (<any>tok)[field] || tok;
+		}
+		return tok;
+	}
+
+	protected is<T extends Token>(constructor: {new(): T} | null = null, value: string[] | string | null = null, field: string | null = 'value', skipWhitespace: boolean = true, skipCount: number = 0): boolean {
+		const tok = this.input.peek(skipWhitespace, skipCount);
+		return (constructor === null || tok instanceof constructor)
+			&& (typeof value !== 'string' || (<any>tok)[field || 'value'] === value)
+			&& (!(value instanceof Array) || value.includes((<any>tok)[field || 'value']));
 	}
 
 	protected takeArrayDottedId(optional: boolean = false): string[] {
@@ -310,7 +326,7 @@ export default class Parser {
 		const pack = this.take(TokenKeyword, 'package') ? this.takeDottedId() : null;
 		return new NodePackage({
 			package: pack,
-			body: this.while<Node>(this.parseUse, this.parseVarOrVal, () => this.parseFun()),
+			body: this.while<Node>(this.parseUse, this.parseDefinition),
 		});
 	}
 
@@ -336,6 +352,18 @@ export default class Parser {
 			name: pack.join('.'),
 			alias: alias,
 		});
+	}
+
+	protected parseDefinition(): NodeDefinition | null {
+		const modifiers = this.while(tok => tok instanceof TokenModifier ? new NodeDefinitionModifier({ value: <string>this.take() }) : null);
+		const definition = this.parseOf<NodeDefinition>(this.parseVarOrVal, () => this.parseFun(), this.parseClass);
+		if (definition !== null) {
+			definition.modifiers = modifiers;
+		} else if (modifiers.length !== 0) {
+			// TODO: Rollback if parse failed
+			throw this.error('Unhandled parser situation');
+		}
+		return definition;
 	}
 
 	protected parseVarOrVal(): NodeVal | NodeVar | null {
@@ -397,6 +425,24 @@ export default class Parser {
 		return null;
 	}
 
+
+	protected parseClass(): NodeClass | null {
+		if (this.take(TokenKeyword, 'class')) {
+			const name = this.doParse(this.parseTypeName);
+			if (name === null) {
+				throw this.error('Class name expected');
+			}
+			const children = this.enterBlock<NodeDefinition>(this.parseDefinition);
+			return new NodeClass({
+				name: name,
+				children: children
+			});
+		}
+		return null;
+	}
+
+
+	// Everything that are related to code in functions and expressions
 	protected parseStatement(): NodeExpression | NodeVal | NodeVar | null {
 		return this.doParse(this.parseVarOrVal) || this.doParse(this.parseExpression);
 	}
@@ -440,7 +486,7 @@ export default class Parser {
 		let name = null;
 		if (this.is(TokenOperator, ':', 'value', true, 1)) {
 			name = this.doParse(this.parseIdentifier);
-			this.input.next();
+			this.take();
 		}
 		const value = this.doParse(this.parseExpression);
 		if (value === null) {
@@ -522,7 +568,7 @@ export default class Parser {
 		if (op instanceof TokenOperator) {
 			const thatOp = OperatorsProvider.get(op.value, OperatorType.PrefixUnary);
 			if (thatOp !== null) {
-				this.input.next();
+				this.take();
 				const exp = expGen();
 				if (exp === null) {
 					return null;
@@ -541,7 +587,7 @@ export default class Parser {
 		if (op instanceof TokenOperator) {
 			const thatOp = OperatorsProvider.get(op.value, OperatorType.SuffixUnary);
 			if (thatOp !== null) {
-				this.input.next();
+				this.take();
 				return new NodeSuffixUnaryOperator({
 					op: thatOp,
 					exp: exp
@@ -556,7 +602,7 @@ export default class Parser {
 		if (op instanceof TokenOperator) {
 			const thatOp = OperatorsProvider.get(op.value, OperatorType.Binary);
 			if (thatOp !== null && thatOp.priority <= leftPriority) {
-				this.input.next();
+				this.take();
 				const right = <NodeBinaryOperator>this.doParse(this.parseMaybeBinary, this.doParse(this.parseAtom), thatOp.priority);
 				const current = new NodeBinaryOperator({
 					op: thatOp,
