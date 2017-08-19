@@ -4,8 +4,8 @@ import NodeVisitor from '../visitor/NodeVisitor';
 
 export default abstract class Node {
 	whitespaces: Token[] = [];
-	begin: CodePosition | null = null;
-	end: CodePosition | null = null;
+	begin: CodePosition;
+	end: CodePosition;
 
 	readonly abstract type: string = '';
 
@@ -14,7 +14,7 @@ export default abstract class Node {
 	}
 
 	public visit(visitor: NodeVisitor): void {
-		(<(node: Node) => void>(<any>visitor)[`visit${this.constructor.name}`])(this);
+		visitor.visit(this);
 	}
 
 	public toJSON() {
@@ -23,7 +23,7 @@ export default abstract class Node {
 			const value = (<any>this)[key];
 			if ((key === 'begin' || key === 'end') && value instanceof CodePosition) {
 				result[key] = value.toString();
-			} else {
+			} else if (key !== 'whitespaces') {
 				result[key] = value;
 			}
 		});

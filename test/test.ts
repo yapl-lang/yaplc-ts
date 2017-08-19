@@ -38,7 +38,9 @@ import PositionalError from '../src/error/PositionalError';
 import CharStream from '../src/CharStream';
 import TokenStream from '../src/TokenStream';
 import Parser from '../src/Parser';
-import {NodePrinterStdoutTarget, NodeCodePrettyPrinter} from '../src/visitor/NodePrinter';
+import {NodePrinterStdoutTarget} from '../src/printer/NodePrinter';
+import NodeAstPrinter from '../src/printer/NodeAstPrinter';
+import NodeCodePrettyPrinter from '../src/printer/NodeCodePrettyPrinter';
 import {TokenEof} from '../src/token/Tokens';
 
 
@@ -48,7 +50,7 @@ const tokenStream = new TokenStream(charStream, errorHandler);
 const parser = new Parser(tokenStream, errorHandler);
 
 try {
-	const action: number = 2;
+	const action: number = 1;
 	switch (action) {
 	case 0: { // print tokens
 		let tok;
@@ -59,13 +61,15 @@ try {
 	}
 	case 1: { // print ast
 		const ast = parser.parse();
-		console.log(JSON.stringify(ast, null, '  '));
+		const target = new NodePrinterStdoutTarget();
+		const printer = new NodeAstPrinter('  ');
+		printer.print(ast, target);
 		break;
 	}
 	case 2: { // print code
 		const ast = parser.parse();
 		const target = new NodePrinterStdoutTarget();
-		const printer = new NodeCodePrettyPrinter();
+		const printer = new NodeCodePrettyPrinter('  ');
 		printer.print(ast, target);
 		break;
 	}
