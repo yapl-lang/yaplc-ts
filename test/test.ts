@@ -11,7 +11,7 @@ val testArrayOfArray: [4][4]float # 4x4 array of floats. In memory will be store
 val testMatrix: [4, 4]float # 4x4 array of floats. In memory will be stored together: 16 elements of float type; static array
 
 fun log call: fun(): string
-	if loggingEnabled
+	if loggingEnabled then
 		print(call())
 
 # DOCs maybe that, but also may be changed
@@ -25,15 +25,16 @@ fun main args: []string: int {
 	--a
 	print(a)
 	print(named: 18 + 1 * 9)
-	log(fun \`'My number is 'a' and this is logged using string template'\`)
+	#log(fun \`'My number is 'a' and this is logged using string template'\`)
+	log() 'test'
 }
 
-fun main2 args: string: string
-	print(18.64)
-	print(named: 15.84E-5)
+#fun main2 args: string: string
+#	print(18.64)
+#	print(named: 15.84E-5)
 
-publ class TestClass
-	fun method = null
+#publ class TestClass
+#	fun method = null
 
 `;
 

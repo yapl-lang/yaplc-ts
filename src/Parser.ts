@@ -10,6 +10,7 @@ import {
 	TokenIndent,
 	TokenOutdent,
 	TokenWhitespace,
+	TokenSemicolon,
 	TokenPunctuation,
 	TokenOperator,
 	TokenModifier,
@@ -207,12 +208,16 @@ export default class Parser {
 
 	protected enterBlock<T extends Node>(...call: ((c: Token, i: number) => T | null)[]): T[] {
 		const result: T[] = [];
-		let tok;
-		while ((tok = this.input.peek(false)).isWhitespace && !(tok instanceof TokenEof) && !(tok instanceof TokenIndent)) {
-			this.input.next(false);
+		let tok, skipCounter = -1, wasDelim = false, wasClosingDelim = false;
+		while ((tok = this.input.peek(false, skipCounter + 1)).isWhitespace && !(tok instanceof TokenEof) && !(tok instanceof TokenIndent)) {
+			++skipCounter;
+			wasDelim = true;
+			if (tok instanceof TokenNewline || tok instanceof TokenSemicolon) {
+				wasClosingDelim = true;
+			}
 		}
 		if (tok instanceof TokenIndent) {
-			this.input.next(false);
+			this.input.next(false, skipCounter + 1);
 			while (true) {
 				let res = null;
 				for (const acall of call) {
@@ -233,6 +238,7 @@ export default class Parser {
 				}
 			}
 		} else if (this.take(TokenPunctuation, '{')) {
+			this.input.next(false, skipCounter);
 			while (!this.take(TokenPunctuation, '}')) {
 				let res = null;
 				for (const acall of call) {
@@ -245,17 +251,17 @@ export default class Parser {
 				}
 				result.push(res);
 			}
-		} else {
+		} else if (wasDelim && !wasClosingDelim) {
+			this.input.next(false, skipCounter);
 			let res = null;
 			for (const acall of call) {
 				if ((res = this.doParse<T>(acall, this.input.peek(), result.length)) !== null) {
 					break;
 				}
 			}
-			if (res === null) {
-				throw this.error('Unexpected');
+			if (res !== null) {
+				result.push(res);
 			}
-			result.push(res);
 		}
 		return result;
 	}
@@ -448,7 +454,7 @@ export default class Parser {
 	}
 
 	protected parseExpression(canBlock: boolean = false): NodeExpression | null {
-		return this.doParse(() => this.parseMaybeUnary(() => this.parseMaybeCall(() => this.doParse(this.parseMaybeBinary, this.doParse(this.parseAtom, canBlock), 128))));
+		return this.doParse(() => this.parseMaybeUnary(() => this.doParse(this.parseMaybeCall, () => this.doParse(this.parseMaybeBinary, this.doParse(this.parseAtom, canBlock), 128))));
 	}
 
 	protected parseExpressionalBlock(): NodeExpression | null {
@@ -470,16 +476,21 @@ export default class Parser {
 		if (callee === null) {
 			return null;
 		}
+		const call = new NodeCall({ callee: callee, arguments: [] });
+		let returnCall = false;
 		if (this.is(TokenPunctuation, '(')) {
-			return new NodeCall({
-				callee: callee,
-				arguments: this.delimited(this.parseCallArgument,
-					{type: TokenPunctuation, value: '('},
-					{type: TokenPunctuation, value: ','},
-					{type: TokenPunctuation, value: ')'})
-			});
+			call.arguments = this.delimited(this.parseCallArgument,
+				{type: TokenPunctuation, value: '('},
+				{type: TokenPunctuation, value: ','},
+				{type: TokenPunctuation, value: ')'});
+			returnCall = true;
 		}
-		return callee;
+		const expBlock = this.doParse(this.parseExpressionalBlock);
+		if (expBlock !== null) {
+			call.suffix = expBlock;
+			returnCall = true;
+		}
+		return returnCall ? call : callee;
 	}
 
 	protected parseCallArgument(): NodeCallArgument | null {

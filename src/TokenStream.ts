@@ -60,7 +60,7 @@ export default class TokenStream {
 			return this.current[skipCount];
 		}
 		for (const tok of this.current) {
-			if (!tok.isWhitespace && skipCount-- === 0) {
+			if ((!skipWhitespace || !tok.isWhitespace) && skipCount-- === 0) {
 				return tok;
 			}
 		}
@@ -81,8 +81,11 @@ export default class TokenStream {
 		}
 	}
 
-	public next(skipWhitespace: boolean = true): Token {
-		const tok = this.peek(skipWhitespace);
+	public next(skipWhitespace: boolean = true, skipCount: number = 0): Token {
+		if (skipCount < 0) {
+			return this.peek(skipWhitespace);
+		}
+		const tok = this.peek(skipWhitespace, skipCount);
 		while (this.current.length !== 0) {
 			const tok2 = <Token>this.current.shift();
 			if (tok2 === tok) {

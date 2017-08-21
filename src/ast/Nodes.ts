@@ -102,6 +102,7 @@ export class NodeCall extends NodeExpression<NodeCall> {
 	type = 'call';
 	callee: NodeExpression;
 	arguments: NodeCallArgument[];
+	suffix: NodeExpression;
 }
 
 export class NodeCallArgument extends BaseNode<NodeCallArgument> {
