@@ -91,6 +91,7 @@ export default class Parser {
 		this.errors = errors;
 	}
 
+	// Basic parsing functions
 	protected doParse<T extends Node>(method: string | String | ((...args: any[]) => T | null), ...args: any[]): T | null {
 		if (typeof method === 'string' || method instanceof String) {
 			method = <() => T>(<any>this)[method.toString()];
@@ -146,6 +147,7 @@ export default class Parser {
 		return result;
 	}
 
+	// Functions-consumers
 	protected is<T extends Token = Token, Value = string>(template: TokenTemplate<T, Value> | {new(): T} = {}): boolean {
 		if (template instanceof Function) {
 			template = { type: template };
@@ -210,6 +212,7 @@ export default class Parser {
 		return this.skip<T, Value>(template).value;
 	}
 
+	// Utils
 	protected delimited<T extends Node>(
 		item: string | String | ((c: Token, i: number) => T | null),
 		before: TokenTemplate,
@@ -241,28 +244,6 @@ export default class Parser {
 			this.skip(after);
 		}
 		return result;
-	}
-
-	protected takeArrayDottedId(optional: boolean = false): string[] {
-		const id: string[] = [];
-		let first;
-		if (first = (optional
-				? this.takeValue(TokenIdentifier)
-				: this.skipValue(TokenIdentifier))) {
-			id.push(first);
-			while (this.take(TokenDot)) {
-				id.push(this.skipValue(TokenIdentifier));
-			}
-		}
-		return id;
-	}
-
-	protected takeDottedId(optional: boolean = false): string | null {
-		const elements = this.takeArrayDottedId(optional);
-		if (elements.length === 0) {
-			return null;
-		}
-		return elements.join('.');
 	}
 
 	protected enterBlock<T extends Node>(...call: ((c: Token, i: number) => T | null)[]): T[] {
@@ -325,6 +306,29 @@ export default class Parser {
 		return result;
 	}
 
+	protected takeArrayDottedId(optional: boolean = false): string[] {
+		const id: string[] = [];
+		let first;
+		if (first = (optional
+				? this.takeValue(TokenIdentifier)
+				: this.skipValue(TokenIdentifier))) {
+			id.push(first);
+			while (this.take(TokenDot)) {
+				id.push(this.skipValue(TokenIdentifier));
+			}
+		}
+		return id;
+	}
+
+	protected takeDottedId(optional: boolean = false): string | null {
+		const elements = this.takeArrayDottedId(optional);
+		if (elements.length === 0) {
+			return null;
+		}
+		return elements.join('.');
+	}
+
+	// Simple things parsers
 	protected parseIdentifier(): NodeIdentifier | null {
 		const name = this.takeValue(TokenIdentifier) || this.takeValue({ type: TokenKeyword, value: [
 			'null',
@@ -387,6 +391,7 @@ export default class Parser {
 		return null;
 	}
 
+	// Root-level nodes parsers
 	protected parsePackage(): NodePackage {
 		const pack = this.take({ type: TokenKeyword, value: 'package' }) ? this.takeDottedId() : null;
 		return new NodePackage({
@@ -419,6 +424,7 @@ export default class Parser {
 		});
 	}
 
+	// Definitions parsers
 	protected parseDefinition(): NodeDefinition | null {
 		const modifiers = this.while(tok => tok instanceof TokenModifier ? new NodeDefinitionModifier({ value: this.skipValue() }) : null);
 		const definition = this.parseOf<NodeDefinition>(this.parseVarOrVal, () => this.parseFun(), this.parseClass);
@@ -490,7 +496,6 @@ export default class Parser {
 		return null;
 	}
 
-
 	protected parseClass(): NodeClass | null {
 		if (this.take({ type: TokenKeyword, value: 'class' })) {
 			const name = this.doParse(this.parseTypeName);
@@ -507,7 +512,7 @@ export default class Parser {
 	}
 
 
-	// Everything that are related to code in functions and expressions
+	// Statements, expressions
 	protected parseStatement(): NodeExpression | NodeVal | NodeVar | null {
 		return this.parseOf(this.parseVarOrVal, () => this.parseFun(), () => this.parseExpression());
 	}
@@ -710,6 +715,7 @@ export default class Parser {
 		return null;
 	}
 
+	// API
 	public parse(): NodePackage {
 		const pack = <NodePackage>this.doParse(this.parsePackage);
 		if (!this.eof()) {
