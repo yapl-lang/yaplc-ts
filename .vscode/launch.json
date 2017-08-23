@@ -4,7 +4,7 @@
 		{
 			"type": "node",
 			"request": "launch",
-			"name": "Tests",
+			"name": "Launch tests",
 			"program": "${workspaceRoot}/node_modules/mocha/bin/_mocha",
 			"args": [
 				"-u",
@@ -14,7 +14,20 @@
 				"--colors",
 				"${workspaceRoot}/out/test"
 			],
-			"preLaunchTask": "build",
+			"internalConsoleOptions": "openOnSessionStart"
+		}, {
+			"type": "node",
+			"request": "launch",
+			"name": "Launch user test",
+			"program": "${workspaceRoot}/node_modules/mocha/bin/_mocha",
+			"args": [
+				"-u",
+				"tdd",
+				"--timeout",
+				"999999",
+				"--colors",
+				"${workspaceRoot}/out/test/MyTest.js"
+			],
 			"internalConsoleOptions": "openOnSessionStart"
 		}
 	]
