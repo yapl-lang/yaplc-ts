@@ -57,11 +57,28 @@ import {
 } from './ast/Nodes';
 import {OperatorType, OperatorsProvider} from './Operators';
 
-interface TokenTemplate<T extends Token = Token, Value = string> {
+class TokenTemplate<T extends Token = Token, Value = string> {
 	readonly type?: {new(): T};
 	readonly value?: Value[] | Value;
 	readonly skipWhitespace?: boolean;
 	readonly skip?: number;
+
+	static toString<T extends Token = Token, Value = string>(template: TokenTemplate<T, Value> | {new(): Token}): string {
+		if (template instanceof Function) {
+			return template.name;
+		}
+
+		template instanceof Function ? template.name : (template.value
+				? (template.value instanceof Array ? template.value: [template.value]).map(val => `'${val}'`).join(' or ')
+				: template.constructor.name)
+
+		return [
+			template.type ? 'Token ' + template.type.name : null,
+			template.value ? ('Value ' + (template.value instanceof Array ? template.value.join(' or ') : template.value)) : null,
+			template.skipWhitespace ? 'Skip Whitespace' : null,
+			template.skip ? 'Skip ' + template.skip : null,
+		].filter(i => i !== null).join(', ');
+	}
 }
 
 export default class Parser {
@@ -176,10 +193,7 @@ export default class Parser {
 	protected skip<T extends Token = Token, Value = string>(template: TokenTemplate<T, Value> | {new(): T} = {}): T {
 		const token = this.take<T, Value>(template);
 		if (token === null) {
-			const expected = template instanceof Function ? template.name : template.constructor
-					? template.constructor.name
-					: (template.value instanceof Array ? template.value: [template.value]).map(val => `'${val}'`).join(' or ');
-			throw this.error(`Expected ${expected}`, this.input.peek());
+			throw this.error(`Expected ${TokenTemplate.toString(template)}`, this.input.peek());
 		}
 		return token;
 	}
@@ -557,13 +571,14 @@ export default class Parser {
 	protected parseStringTemplate(): NodeStringTemplate | null {
 		if (this.take({ type: TokenPunctuation, value: '`' })) {
 			const expressions = [];
-			while (!this.take({ type: TokenPunctuation, value: '`' })) {
+			do {
 				const exp = this.doParse(this.parseExpression);
 				if (exp === null) {
 					throw this.error('Expression expected');
 				}
 				expressions.push(exp);
-			}
+			} while (this.take({ type: TokenPunctuation, value: ',' }));
+			this.skip({ type: TokenPunctuation, value: '`' });
 			return new NodeStringTemplate({
 				expressions: expressions
 			});
