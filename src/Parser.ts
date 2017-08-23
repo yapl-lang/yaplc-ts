@@ -42,7 +42,9 @@ import {
 	NodeVar,
 	NodeFunction,
 	NodeFunctionArgument,
+	NodeType,
 	NodeClass,
+	NodeInterface,
 	NodeCall,
 	NodeCallArgument,
 	NodeReference,
@@ -215,21 +217,23 @@ export default class Parser {
 	// Utils
 	protected delimited<T extends Node>(
 		item: string | String | ((c: Token, i: number) => T | null),
-		before: TokenTemplate,
-		delimiter: TokenTemplate,
-		after: TokenTemplate = before,
+		before: TokenTemplate | null = null,
+		delimiter: TokenTemplate | null = null,
+		after: TokenTemplate | null = before,
 		optional: boolean = false,
 		optionalBeforeAndAfter: boolean = false): T[] {
 		const result: T[] = [];
 		let needAfter = true;
-		if (!optional) {
-			this.skip(before);
-		} else {
-			if (!this.take(before)) {
-				if (optionalBeforeAndAfter) {
-					needAfter = false;
-				} else {
-					return result;
+		if (before !== null) {
+			if (!optional) {
+				this.skip(before);
+			} else {
+				if (!this.take(before)) {
+					if (optionalBeforeAndAfter) {
+						needAfter = false;
+					} else {
+						return result;
+					}
 				}
 			}
 		}
@@ -239,8 +243,8 @@ export default class Parser {
 				break;
 			}
 			result.push(node);
-		} while (this.take(delimiter));
-		if (needAfter) {
+		} while (delimiter === null || this.take(delimiter));
+		if (after !== null && needAfter) {
 			this.skip(after);
 		}
 		return result;
@@ -427,7 +431,7 @@ export default class Parser {
 	// Definitions parsers
 	protected parseDefinition(): NodeDefinition | null {
 		const modifiers = this.while(tok => tok instanceof TokenModifier ? new NodeDefinitionModifier({ value: this.skipValue() }) : null);
-		const definition = this.parseOf<NodeDefinition>(this.parseVarOrVal, () => this.parseFun(), this.parseClass);
+		const definition = this.parseOf<NodeDefinition>(this.parseVarOrVal, () => this.parseFun(), this.parseClass, this.parseInterface);
 		if (definition !== null) {
 			definition.modifiers = modifiers;
 		} else if (modifiers.length !== 0) {
@@ -496,19 +500,43 @@ export default class Parser {
 		return null;
 	}
 
-	protected parseClass(): NodeClass | null {
-		if (this.take({ type: TokenKeyword, value: 'class' })) {
+	protected parseType<T extends NodeType>(constructor: {new(init?: Partial<NodeType>): T}, before: string, header?: (node: T) => void): T | null {
+		if (this.take({ type: TokenKeyword, value: before })) {
 			const name = this.doParse(this.parseTypeName);
 			if (name === null) {
-				throw this.error('Class name expected');
+				throw this.error('Type name expected');
 			}
-			const children = this.enterBlock<NodeDefinition>(this.parseDefinition);
-			return new NodeClass({
-				name: name,
-				children: children
+			const node = new constructor({
+				name: name
 			});
+			header && header(node);
+			node.children = this.enterBlock(this.parseDefinition);
+			return node;
 		}
 		return null;
+	}
+
+	protected parseClass(): NodeClass | null {
+		return this.parseType(NodeClass, 'class', node => {
+			if (this.take({ type: TokenKeyword, value: 'extends' })) {
+				node.superclass = this.doParse(this.parseTypeRef);
+				if (this.is({ type: TokenPunctuation, value: ',' })) {
+					throw this.error('Class cannot have multiple superclasses');
+				}
+			}
+
+			if (this.take({ type: TokenKeyword, value: 'implements' })) {
+				node.superinterfaces = this.delimited(this.parseTypeRef, null, { type: TokenPunctuation, value: ',' });
+			}
+		});
+	}
+
+	protected parseInterface(): NodeInterface | null {
+		return this.parseType(NodeInterface, 'interface', node => {
+			if (this.take({ type: TokenKeyword, value: 'extends' })) {
+				node.superinterfaces = this.delimited(this.parseTypeRef, null, { type: TokenPunctuation, value: ',' });
+			}
+		});
 	}
 
 

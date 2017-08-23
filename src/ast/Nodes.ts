@@ -92,9 +92,20 @@ export class NodeFunctionArgument extends BaseNode<NodeFunctionArgument> {
 	targetType: NodeTypeReference | null;
 }
 
-export class NodeClass extends NodeDefinition<NodeClass> {
-	type = 'class';
+export abstract class NodeType<Self extends Node = Node> extends NodeDefinition<Self> {
 	children: NodeDefinition[];
+}
+
+export class NodeClass extends NodeType<NodeClass> {
+	type = 'class';
+
+	superclass: NodeTypeReference | null;
+	superinterfaces: NodeTypeReference[];
+}
+
+export class NodeInterface extends NodeType<NodeInterface> {
+	type = 'interface';
+	superinterfaces: NodeTypeReference[];
 }
 
 

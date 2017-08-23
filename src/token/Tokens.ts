@@ -47,9 +47,11 @@ export class TokenOperator extends ValueToken<TokenOperator, char> {
 
 export class TokenModifier extends ValueToken<TokenModifier> {
 	static MODIFIERS: string[] = [
-		'priv',
-		'prot',
-		'publ',
+		'private',
+		'protected',
+		'public',
+
+		'abstract',
 
 		'test',
 	];
@@ -67,6 +69,10 @@ export class TokenKeyword extends ValueToken<TokenKeyword> {
 		'val',
 		'fun',
 		'class',
+		'interface',
+		
+		'extends',
+		'implements',
 
 		'if',
 		'then',
