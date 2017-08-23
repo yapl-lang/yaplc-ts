@@ -509,7 +509,7 @@ export default class Parser {
 
 	// Everything that are related to code in functions and expressions
 	protected parseStatement(): NodeExpression | NodeVal | NodeVar | null {
-		return this.doParse(this.parseVarOrVal) || this.doParse(this.parseExpression);
+		return this.parseOf(this.parseVarOrVal, () => this.parseFun(), () => this.parseExpression());
 	}
 
 	protected parseExpression(canBlock: boolean = false): NodeExpression | null {
