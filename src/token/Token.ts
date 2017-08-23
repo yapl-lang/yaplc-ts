@@ -29,9 +29,13 @@ export default abstract class Token {
 	}
 }
 
-export abstract class BaseToken<Self> extends Token {
+export abstract class BaseToken<Self extends Token> extends Token {
 	public constructor(init?: Partial<Self>) {
 		super(init);
 	}
+}
+
+export abstract class ValueToken<Self extends Token, Value = string> extends BaseToken<Self> {
+	value: Value;
 }
 
