@@ -4,22 +4,18 @@
 		{
 			"type": "node",
 			"request": "launch",
-			"name": "Launch test",
-			"program": "${workspaceRoot}/out/test/test.js",
-			"stopOnEntry": false,
-            "cwd": "${workspaceRoot}",
-            "runtimeArgs": [
-                "--nolazy"
-            ],
-            "env": {
-                "NODE_ENV": "development"
-            },
-			"console": "internalConsole",
-			"sourceMaps": true,
-			"outFiles": [
-				"${workspaceRoot}/out/**/*"
+			"name": "Tests",
+			"program": "${workspaceRoot}/node_modules/mocha/bin/_mocha",
+			"args": [
+				"-u",
+				"tdd",
+				"--timeout",
+				"999999",
+				"--colors",
+				"${workspaceRoot}/out/test"
 			],
-			"restart": true
+			"preLaunchTask": "build",
+			"internalConsoleOptions": "openOnSessionStart"
 		}
 	]
 }
