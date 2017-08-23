@@ -1,9 +1,12 @@
 import CodePosition from './CodePosition';
 import TokenStream from './TokenStream';
 import ErrorHandler from './error/ErrorHandler';
-import Error from './error/Error';
+import CompilationError from './error/Error';
 import SyntaxError from './error/SyntaxError';
-import Token from './token/Token';
+import {
+	default as Token,
+	ValueToken
+ } from './token/Token';
 import {
 	TokenNewline,
 	TokenEof,
@@ -54,9 +57,11 @@ import {
 } from './ast/Nodes';
 import {OperatorType, OperatorsProvider} from './Operators';
 
-class TokenEqualiter {
-	constructor(readonly type: {new(): Token} | null = null, readonly value: string | null = null) {
-	}
+interface TokenTemplate<T extends Token = Token, Value = string> {
+	readonly type?: {new(): T};
+	readonly value?: Value[] | Value;
+	readonly skipWhitespace?: boolean;
+	readonly skip?: number;
 }
 
 export default class Parser {
@@ -74,6 +79,7 @@ export default class Parser {
 			method = <() => T>(<any>this)[method.toString()];
 		}
 		const oldBegin = this.currentNodeBegin;
+
 		this.currentNodeBegin = null;
 		const begin = this.input.position;
 		const whitespaces: Token[] = [];
@@ -123,19 +129,86 @@ export default class Parser {
 		return result;
 	}
 
+	protected is<T extends Token = Token, Value = string>(template: TokenTemplate<T, Value> | {new(): T} = {}): boolean {
+		if (template instanceof Function) {
+			template = { type: template };
+		}
+
+		const tok = this.input.peek(template.skipWhitespace, template.skip);
+
+		if (template.type !== void 0 && !(tok instanceof (template.type))) {
+			return false;
+		}
+
+		if (template.value !== void 0) {
+			if (!(tok instanceof ValueToken)) {
+				throw new Error(`Template has value but Token is not ValueToken`);
+			}
+
+			if (template.value instanceof Array) {
+				if (!template.value.includes(tok.value)) {
+					return false;
+				}
+			} else {
+				if (template.value !== tok.value) {
+					return false;
+				}
+			}
+		}
+
+		return true;
+	}
+
+	protected take<T extends Token = Token, Value = string>(template: TokenTemplate<T, Value> | {new(): T} = {}): T | null {
+		if (template instanceof Function) {
+			template = { type: template };
+		}
+
+		if (!this.is<T, Value>(template)) {
+			return null;
+		}
+		if (this.currentNodeBegin === null && !this.input.peek().isWhitespace) {
+			this.currentNodeBegin = this.input.peek().begin;
+		}
+		return <T>this.input.next(template.skipWhitespace, template.skip);
+	}
+
+	protected skip<T extends Token = Token, Value = string>(template: TokenTemplate<T, Value> | {new(): T} = {}): T {
+		const token = this.take<T, Value>(template);
+		if (token === null) {
+			const expected = template instanceof Function ? template.name : template.constructor
+					? template.constructor.name
+					: (template.value instanceof Array ? template.value: [template.value]).map(val => `'${val}'`).join(' or ');
+			throw this.error(`Expected ${expected}`, this.input.peek());
+		}
+		return token;
+	}
+
+	protected takeValue<T extends ValueToken<T, Value> = ValueToken<T, Value>, Value = string>(template: TokenTemplate<T, Value> | {new(): T} = {}): Value | null {
+		const tok = this.take<T, Value>(template);
+		if (tok === null) {
+			return null;
+		}
+		return tok.value;
+	}
+
+	protected skipValue<T extends ValueToken<T, Value> = ValueToken<T, Value>, Value = string>(template: TokenTemplate<T, Value> | {new(): T} = {}): Value {
+		return this.skip<T, Value>(template).value;
+	}
+
 	protected delimited<T extends Node>(
 		item: string | String | ((c: Token, i: number) => T | null),
-		before: TokenEqualiter,
-		delimiter: TokenEqualiter,
-		after: TokenEqualiter = before,
+		before: TokenTemplate,
+		delimiter: TokenTemplate,
+		after: TokenTemplate = before,
 		optional: boolean = false,
 		optionalBeforeAndAfter: boolean = false): T[] {
 		const result: T[] = [];
 		let needAfter = true;
 		if (!optional) {
-			this.skip(before.type, before.value);
+			this.skip(before);
 		} else {
-			if (!this.take(before.type, before.value)) {
+			if (!this.take(before)) {
 				if (optionalBeforeAndAfter) {
 					needAfter = false;
 				} else {
@@ -149,50 +222,22 @@ export default class Parser {
 				break;
 			}
 			result.push(node);
-		} while (this.take(delimiter.type, delimiter.value));
+		} while (this.take(delimiter));
 		if (needAfter) {
-			this.skip(after.type, after.value);
+			this.skip(after);
 		}
 		return result;
-	}
-
-	protected skip<T extends Token>(constructor: {new(): T} | null = null, value: string[] | string | null = null, field: string | null = 'value', skipWhitespace: boolean = true): T | string {
-		if (!this.is<T>(constructor, value, field, skipWhitespace)) {
-			throw this.error(`Expected ${value === null ? constructor === null ? '' : constructor.name : value}`, this.input.peek());
-		}
-		return <T | string>this.take<T>(null, null, field, skipWhitespace);
-	}
-
-	protected take<T extends Token>(constructor: {new(): T} | null = null, value: string[] | string | null = null, field: string | null = 'value', skipWhitespace: boolean = true): T | string | null {
-		if (!this.is<T>(constructor, value, field, skipWhitespace)) {
-			return null;
-		}
-		if (this.currentNodeBegin === null && !this.input.peek().isWhitespace) {
-			this.currentNodeBegin = this.input.peek().begin;
-		}
-		const tok = <T>this.input.next(skipWhitespace);
-		if (field) {
-			return (<any>tok)[field] || tok;
-		}
-		return tok;
-	}
-
-	protected is<T extends Token>(constructor: {new(): T} | null = null, value: string[] | string | null = null, field: string | null = 'value', skipWhitespace: boolean = true, skipCount: number = 0): boolean {
-		const tok = this.input.peek(skipWhitespace, skipCount);
-		return (constructor === null || tok instanceof constructor)
-			&& (typeof value !== 'string' || (<any>tok)[field || 'value'] === value)
-			&& (!(value instanceof Array) || value.includes((<any>tok)[field || 'value']));
 	}
 
 	protected takeArrayDottedId(optional: boolean = false): string[] {
 		const id: string[] = [];
 		let first;
 		if (first = (optional
-				? <string>this.take(TokenIdentifier)
-				: <string>this.skip(TokenIdentifier))) {
+				? this.takeValue(TokenIdentifier)
+				: this.skipValue(TokenIdentifier))) {
 			id.push(first);
 			while (this.take(TokenDot)) {
-				id.push(<string>this.skip(TokenIdentifier));
+				id.push(this.skipValue(TokenIdentifier));
 			}
 		}
 		return id;
@@ -237,9 +282,9 @@ export default class Parser {
 					break;
 				}
 			}
-		} else if (this.take(TokenPunctuation, '{')) {
+		} else if (this.take({ type: TokenPunctuation, value: '{' })) {
 			this.input.next(false, skipCounter);
-			while (!this.take(TokenPunctuation, '}')) {
+			while (!this.take({ type: TokenPunctuation, value: '}' })) {
 				let res = null;
 				for (const acall of call) {
 					if ((res = this.doParse<T>(acall, this.input.peek(), result.length)) !== null) {
@@ -267,13 +312,13 @@ export default class Parser {
 	}
 
 	protected parseIdentifier(): NodeIdentifier | null {
-		const name = <string>(this.take(TokenIdentifier) || this.take(TokenKeyword, [
+		const name = this.takeValue(TokenIdentifier) || this.takeValue({ type: TokenKeyword, value: [
 			'null',
 			'this',
 			'true',
 			'false',
 			// TODO: Add keywords that are identifiers
-		]));
+		]});
 		if (name !== null) {
 			return new NodeIdentifier({
 				name: name,
@@ -283,9 +328,9 @@ export default class Parser {
 	}
 
 	protected parseTypeName(): NodeTypeName | null {
-		const name = <string>(this.take(TokenIdentifier) || this.take(TokenKeyword, [
+		const name = this.takeValue(TokenIdentifier) || this.takeValue({ type: TokenKeyword, value: <string[]>[
 			// TODO: Add keywords that are types
-		]));
+		]});
 		if (name !== null) {
 			return new NodeTypeName({
 				name: name,
@@ -295,7 +340,7 @@ export default class Parser {
 	}
 
 	protected parseTypeRef(): NodeTypeReference | null {
-		if (this.is(TokenKeyword, 'fun')) {
+		if (this.is({ type: TokenKeyword, value: 'fun'} )) {
 			const func = this.doParse(this.parseFun, true, false);
 			if (func === null) {
 				throw this.error('Expected function template', this.input.peek(true, 1));
@@ -304,7 +349,7 @@ export default class Parser {
 				func: func
 			});
 		}
-		if (this.is(TokenPunctuation, '[')) {
+		if (this.is({ type: TokenPunctuation, value: '['})) {
 			const dimensions = this.delimited(() => this.parseExpression(),
 				{type: TokenPunctuation, value: '['},
 				{type: TokenPunctuation, value: ','},
@@ -329,7 +374,7 @@ export default class Parser {
 	}
 
 	protected parsePackage(): NodePackage {
-		const pack = this.take(TokenKeyword, 'package') ? this.takeDottedId() : null;
+		const pack = this.take({ type: TokenKeyword, value: 'package' }) ? this.takeDottedId() : null;
 		return new NodePackage({
 			package: pack,
 			body: this.while<Node>(this.parseUse, this.parseDefinition),
@@ -337,23 +382,23 @@ export default class Parser {
 	}
 
 	protected parseUse(): NodeUse | NodeUseAll | null {
-		if (!this.take(TokenKeyword, 'use')) {
+		if (!this.take({ type: TokenKeyword, value: 'use' })) {
 			return null;
 		}
-		const pack = [<string>this.skip(TokenIdentifier)];
+		const pack = [this.skipValue(TokenIdentifier)];
 		while (this.take(TokenDot)) {
-			if (this.take(TokenOperator, '*')) {
+			if (this.take({ type: TokenOperator, value: '*'})) {
 				return new NodeUseAll({
 					package: pack.join('.')
 				});
 			}
-			let id = <string | null>this.take(TokenIdentifier);
+			let id = this.takeValue(TokenIdentifier);
 			if (id === null) {
 				throw this.error('Expected identifier or *');
 			}
 			pack.push(id);
 		}
-		const alias = this.take(TokenKeyword, 'as') ? <string>this.skip(TokenIdentifier) : pack[pack.length - 1];
+		const alias = this.takeValue({ type: TokenKeyword, value: 'as' }) ? this.skipValue(TokenIdentifier) : pack[pack.length - 1];
 		return new NodeUse({
 			name: pack.join('.'),
 			alias: alias,
@@ -361,7 +406,7 @@ export default class Parser {
 	}
 
 	protected parseDefinition(): NodeDefinition | null {
-		const modifiers = this.while(tok => tok instanceof TokenModifier ? new NodeDefinitionModifier({ value: <string>this.take() }) : null);
+		const modifiers = this.while(tok => tok instanceof TokenModifier ? new NodeDefinitionModifier({ value: this.skipValue() }) : null);
 		const definition = this.parseOf<NodeDefinition>(this.parseVarOrVal, () => this.parseFun(), this.parseClass);
 		if (definition !== null) {
 			definition.modifiers = modifiers;
@@ -374,16 +419,16 @@ export default class Parser {
 
 	protected parseVarOrVal(): NodeVal | NodeVar | null {
 		let type: {new(init: Partial<NodeVal | NodeVar>): NodeVal | NodeVar};
-		if (this.take(TokenKeyword, 'val')) {
+		if (this.take({ type: TokenKeyword, value: 'val' })) {
 			type = NodeVal;
-		} else if (this.take(TokenKeyword, 'var')) {
+		} else if (this.take({ type: TokenKeyword, value: 'var' })) {
 			type = NodeVar;
 		} else {
 			return null;
 		}
 		const name = <NodeIdentifier>this.doParse(this.parseIdentifier);
-		const valType = this.take(TokenOperator, ':') ? this.doParse(this.parseTypeRef) : null;
-		const initializer = this.take(TokenOperator, '=') ? this.doParse(this.parseExpression) : null;
+		const valType = this.take({ type: TokenOperator, value: ':' }) ? this.doParse(this.parseTypeRef) : null;
+		const initializer = this.take({ type: TokenOperator, value: '=' }) ? this.doParse(this.parseExpression) : null;
 		return new type({
 			name: name,
 			valType: valType,
@@ -392,7 +437,7 @@ export default class Parser {
 	}
 
 	protected parseFun(expression: boolean = false, hasBody: boolean = true): NodeFunction | null {
-		if (this.take(TokenKeyword, 'fun')) {
+		if (this.take({ type: TokenKeyword, value: 'fun' })) {
 			let name = this.doParse(this.parseIdentifier);
 			if (!expression && name === null) {
 				this.error('Function name expected');
@@ -404,11 +449,11 @@ export default class Parser {
 				{type: TokenPunctuation, value: '('},
 				{type: TokenPunctuation, value: ','},
 				{type: TokenPunctuation, value: ')'}, true, true);
-			const returns = this.take(TokenOperator, ':') ? this.delimited(this.parseTypeRef,
+			const returns = this.take({ type: TokenOperator, value: ':' }) ? this.delimited(this.parseTypeRef,
 				{type: TokenPunctuation, value: '('},
 				{type: TokenPunctuation, value: ','},
 				{type: TokenPunctuation, value: ')'}, true, true) : [];
-			this.take(TokenOperator, '=');
+			this.take({ type: TokenOperator, value: '=' });
 			return new NodeFunction({
 				name: name,
 				arguments: args,
@@ -422,7 +467,7 @@ export default class Parser {
 	protected parseFunArgument(): NodeFunctionArgument | null {
 		const name = this.doParse(this.parseIdentifier);
 		if (name !== null) {
-			const type = this.take(TokenOperator, ':') ? this.doParse(this.parseTypeRef) : null;
+			const type = this.take({ type: TokenOperator, value: ':' }) ? this.doParse(this.parseTypeRef) : null;
 			return new NodeFunctionArgument({
 				name: name,
 				targetType: type,
@@ -433,7 +478,7 @@ export default class Parser {
 
 
 	protected parseClass(): NodeClass | null {
-		if (this.take(TokenKeyword, 'class')) {
+		if (this.take({ type: TokenKeyword, value: 'class' })) {
 			const name = this.doParse(this.parseTypeName);
 			if (name === null) {
 				throw this.error('Class name expected');
@@ -478,7 +523,7 @@ export default class Parser {
 		}
 		const call = new NodeCall({ callee: callee, arguments: [] });
 		let returnCall = false;
-		if (this.is(TokenPunctuation, '(')) {
+		if (this.is({ type: TokenPunctuation, value: '(' })) {
 			call.arguments = this.delimited(this.parseCallArgument,
 				{type: TokenPunctuation, value: '('},
 				{type: TokenPunctuation, value: ','},
@@ -495,7 +540,7 @@ export default class Parser {
 
 	protected parseCallArgument(): NodeCallArgument | null {
 		let name = null;
-		if (this.is(TokenOperator, ':', 'value', true, 1)) {
+		if (this.is({ type: TokenOperator, value: ':', skip: 1 })) {
 			name = this.doParse(this.parseIdentifier);
 			this.take();
 		}
@@ -510,9 +555,9 @@ export default class Parser {
 	}
 
 	protected parseStringTemplate(): NodeStringTemplate | null {
-		if (this.take(TokenPunctuation, '`')) {
+		if (this.take({ type: TokenPunctuation, value: '`' })) {
 			const expressions = [];
-			while (!this.take(TokenPunctuation, '`')) {
+			while (!this.take({ type: TokenPunctuation, value: '`' })) {
 				const exp = this.doParse(this.parseExpression);
 				if (exp === null) {
 					throw this.error('Expression expected');
@@ -527,28 +572,28 @@ export default class Parser {
 	}
 
 	protected parseAtom(canBlock: boolean = false): Node | null {
-		if (this.take(TokenPunctuation, '(')) {
+		if (this.take({ type: TokenPunctuation, value: '(' })) {
 			const exp = this.doParse(this.parseExpression);
 			if (exp === null) {
 				throw this.error('Expression expected');
 			}
-			this.skip(TokenPunctuation, ')');
+			this.skip({ type: TokenPunctuation, value: ')' });
 			return exp;
 		}
-		const number = <string | null>this.take(TokenNumber);
+		const number = this.takeValue(TokenNumber);
 		if (number !== null) {
 			return new NodeNumber({
 				value: number
 			});
 		}
-		const string = <TokenString | null>this.take(TokenString, null, null);
+		const string = this.take(TokenString);
 		if (string !== null) {
 			return new NodeString({
 				stringType: string.stringType,
 				value: string.value,
 			});
 		}
-		if (this.is(TokenPunctuation, '`')) {
+		if (this.is({ type: TokenPunctuation, value: '`' })) {
 			return this.doParse(this.parseStringTemplate);
 		}
 		const identifier = this.doParse(this.parseIdentifier);
@@ -627,18 +672,18 @@ export default class Parser {
 	}
 
 	public parseIf(): NodeIf | null {
-		if (this.take(TokenKeyword, 'if')) {
+		if (this.take({ type: TokenKeyword, value: 'if' })) {
 			const condition = this.doParse(this.parseExpressionalBlock);
 			if (condition === null) {
 				throw this.error('Condition expected');
 			}
-			this.take(TokenKeyword, 'then');
+			this.take({ type: TokenKeyword, value: 'then' });
 			const then = this.doParse(this.parseExpressionalBlock);
 			if (then === null) {
 				throw this.error('Expression expected');
 			}
 			let elsee = null;
-			if (this.take(TokenKeyword, 'else') && (elsee = this.doParse(this.parseExpressionalBlock)) === null) {	
+			if (this.take({ type: TokenKeyword, value: 'else' }) && (elsee = this.doParse(this.parseExpressionalBlock)) === null) {	
 				throw this.error('Expression expected');
 			}
 			return new NodeIf({
@@ -662,7 +707,7 @@ export default class Parser {
 		return this.input.eof();
 	}
 
-	private error(message: string, ...tokens: Token[]): Error {
+	private error(message: string, ...tokens: Token[]): CompilationError {
 		if (tokens.length === 0) {
 			tokens.push(this.input.peek());
 		}

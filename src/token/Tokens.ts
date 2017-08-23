@@ -1,4 +1,4 @@
-import {BaseToken} from './Token';
+import {BaseToken, ValueToken} from './Token';
 import {char} from '../util/Char';
 import {OperatorsValues} from '../Operators';
 
@@ -33,21 +33,19 @@ export class TokenSemicolon extends BaseToken<TokenSemicolon> {
 	isWhitespace = true;
 }
 
-export class TokenPunctuation extends BaseToken<TokenPunctuation> {
+export class TokenPunctuation extends ValueToken<TokenPunctuation, char> {
 	static CHARS: string = ',`(){}[]';
 
 	type = 'punc';
-	value: char;
 }
 
-export class TokenOperator extends BaseToken<TokenOperator> {
+export class TokenOperator extends ValueToken<TokenOperator, char> {
 	static OPERATORS: string[] = OperatorsValues;
 
 	type = 'op';
-	value: char;
 }
 
-export class TokenModifier extends BaseToken<TokenModifier> {
+export class TokenModifier extends ValueToken<TokenModifier> {
 	static MODIFIERS: string[] = [
 		'priv',
 		'prot',
@@ -57,10 +55,9 @@ export class TokenModifier extends BaseToken<TokenModifier> {
 	];
 
 	type = 'mod';
-	value: string;
 }
 
-export class TokenKeyword extends BaseToken<TokenKeyword> {
+export class TokenKeyword extends ValueToken<TokenKeyword> {
 	static KEYWORDS: string[] = [
 		'package',
 		'use',
@@ -82,35 +79,28 @@ export class TokenKeyword extends BaseToken<TokenKeyword> {
 	];
 
 	type = 'kw';
-	value: string;
 }
 
-export class TokenIdentifier extends BaseToken<TokenIdentifier> {
+export class TokenIdentifier extends ValueToken<TokenIdentifier> {
 	type = 'id';
-	value: string;
 }
 
 export class TokenDot extends BaseToken<TokenDot> {
 	type = 'dot';
 }
 
-export class TokenComment extends BaseToken<TokenComment> {
+export class TokenComment extends ValueToken<TokenComment> {
 	type = 'comment';
 	isWhitespace = true;
 
 	commentType: string;
-	value: string;
 }
 
-export class TokenNumber extends BaseToken<TokenNumber> {
+export class TokenNumber extends ValueToken<TokenNumber> {
 	type = 'num';
-
-	value: string;
 }
 
-export class TokenString extends BaseToken<TokenString> {
+export class TokenString extends ValueToken<TokenString> {
 	type = 'str';
-
 	stringType: string;
-	value: string;
 }
