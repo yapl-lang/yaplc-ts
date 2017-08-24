@@ -22,6 +22,8 @@ import {
 	TokenString,
 } from './token/Tokens';
 import { default as Char, char } from './util/Char';
+import { OperatorsProvider } from './Operators';
+import * as assert from 'assert';
 
 export default class TokenStream {
 	private readonly generator: IterableIterator<Token>;
@@ -228,29 +230,26 @@ export default class TokenStream {
 					throw this.error('Unknown operator', this.input.position.relative(-iteration), this.input.position);
 				}
 				const operator = operators[0];
-				yield new TokenOperator({
-					value: operator
-				});
+				yield new TokenOperator({ value: operator });
 				continue;
 			}
-			// TODO: Parse named operators(and, or, etc.)
 			if (Char.isIdBegin(c)) {
 				const id = this.readWhile(Char.isIdBody);
+				if (TokenOperator.NAMED_OPERATORS.includes(id)) {
+					const op = OperatorsProvider.get(id);
+					if (op === null) throw null;
+					yield new TokenOperator({ value: op.value });
+					continue;
+				}
 				if (TokenModifier.MODIFIERS.includes(id)) {
-					yield new TokenModifier({
-						value: id
-					});
+					yield new TokenModifier({ value: id });
 					continue;
 				}
 				if (TokenKeyword.KEYWORDS.includes(id)) {
-					yield new TokenKeyword({
-						value: id
-					});
+					yield new TokenKeyword({ value: id });
 					continue;
 				}
-				yield new TokenIdentifier({
-					value: id
-				});
+				yield new TokenIdentifier({ value: id });
 				continue;
 			}
 			if (c === '.') {

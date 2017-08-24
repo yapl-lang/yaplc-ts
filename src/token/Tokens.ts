@@ -1,6 +1,6 @@
 import {BaseToken, ValueToken} from './Token';
 import {char} from '../util/Char';
-import {OperatorsValues} from '../Operators';
+import {OperatorsValues, OperatorsNamedValues} from '../Operators';
 
 export class TokenNewline extends BaseToken<TokenNewline> {
 	type = 'nl';
@@ -41,6 +41,7 @@ export class TokenPunctuation extends ValueToken<TokenPunctuation, char> {
 
 export class TokenOperator extends ValueToken<TokenOperator, char> {
 	static OPERATORS: string[] = OperatorsValues;
+	static NAMED_OPERATORS: string[] = OperatorsNamedValues;
 
 	type = 'op';
 }
