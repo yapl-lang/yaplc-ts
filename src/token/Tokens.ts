@@ -51,8 +51,9 @@ export class TokenModifier extends ValueToken<TokenModifier> {
 		'protected',
 		'public',
 
+		'final',
 		'abstract',
-
+		'data',
 		'test',
 	];
 
