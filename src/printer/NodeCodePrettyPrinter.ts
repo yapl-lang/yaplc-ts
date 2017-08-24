@@ -4,15 +4,22 @@ import {
 	NodeUse,
 	NodeUseAll,
 	NodeIdentifier,
-	NodeTypeName,
+	NodeTypeReference,
 	NodeNamedTypeReference,
 	NodeLambdaTypeReference,
 	NodeArrayTypeReference,
+	NodeGenericTypeReference,
+	NodeGenericParameter,
+	NodeExpression,
+	NodeDefinitionModifier,
+	NodeDefinition,
 	NodeVal,
 	NodeVar,
 	NodeFunction,
 	NodeFunctionArgument,
-	NodeExpression,
+	NodeType,
+	NodeClass,
+	NodeInterface,
 	NodeCall,
 	NodeCallArgument,
 	NodeReference,
@@ -58,10 +65,6 @@ export default class NodeCodePrettyPrinter extends NodePrettyPrinter implements 
 		this.a('use ', node.package, '.*');
 	}
 
-	NodeTypeName(node: NodeTypeName): void {
-		this.a(node.name);
-	}
-
 	NodeIdentifier(node: NodeIdentifier): void {
 		this.a(node.name);
 	}
@@ -90,6 +93,19 @@ export default class NodeCodePrettyPrinter extends NodePrettyPrinter implements 
 		this.a('[', ArrayUtil.fillBetween<any>(node.dimensions, ', '), ']', node.target);
 	}
 
+	NodeGenericTypeReference(node: NodeGenericTypeReference): void {
+		this.a('<', ArrayUtil.fillBetween<any>(node.parameters, ', '), '>', node.target);
+	}
+
+	NodeGenericParameter(node: NodeGenericParameter): void {
+		this.a(node.target);
+		node.default && this.a(' = ', node.default);
+	}
+
+	NodeDefinitionModifier(node: NodeDefinitionModifier): void {
+		this.a(node.value, ' ');
+	}
+
 	NodeVal(node: NodeVal): void {
 		this.a('val ', node.name);
 		if (node.valType !== null) {
@@ -113,6 +129,10 @@ export default class NodeCodePrettyPrinter extends NodePrettyPrinter implements 
 
 	NodeFunction(node: NodeFunction): void {
 		this.a('fun');
+		this.NodeFunctionAfterKw(node);
+	}
+
+	NodeFunctionAfterKw(node: NodeFunction) {
 		if (node.name !== null) {
 			this.a(' ', node.name);
 		}
@@ -127,7 +147,7 @@ export default class NodeCodePrettyPrinter extends NodePrettyPrinter implements 
 				this.a('(', ArrayUtil.fillBetween<any>(node.returns, ', '), ')');
 			}
 		}
-		this.a(' ', node.body);
+		node.body && this.a(' ', node.body);
 	}
 
 	NodeFunctionArgument(node: NodeFunctionArgument): void {
@@ -137,8 +157,27 @@ export default class NodeCodePrettyPrinter extends NodePrettyPrinter implements 
 		}
 	}
 
+	NodeType(node: NodeType): void {
+		this.block(() => node.children.forEach(child => this.nl(child)), ' {');
+	}
+
+	NodeClass(node: NodeClass): void {
+		this.a(node.modifiers, 'class ', node.name);
+		node.primaryConstructor && this.NodeFunctionAfterKw(node.primaryConstructor);
+		node.superclass && this.a(' extends ', node.superclass);
+		node.superinterfaces.length !== 0 && this.a(' implements ', ArrayUtil.fillBetween<any>(node.superinterfaces, ', '));
+		this.NodeType(node);
+	}
+
+	NodeInterface(node: NodeInterface): void {
+		this.a(node.modifiers, 'interface ', node.name);
+		node.superinterfaces.length !== 0 && this.a(' extends ', ArrayUtil.fillBetween<any>(node.superinterfaces, ', '));
+		this.NodeType(node);
+	}
+
 	NodeCall(node: NodeCall): void {
 		this.a(node.callee, '(', ArrayUtil.fillBetween<any>(node.arguments, ', '), ')');
+		node.suffix && this.a(' ', node.suffix);
 	}
 
 	NodeCallArgument(node: NodeCallArgument): void {
@@ -173,13 +212,13 @@ export default class NodeCodePrettyPrinter extends NodePrettyPrinter implements 
 	}
 
 	NodeBinaryOperator(node: NodeBinaryOperator): void {
-		this.a(node.left, node.op.value, node.right);
+		this.a(node.left, ' ', node.op.value, ' ', node.right);
 	}
 
 	NodeIf(node: NodeIf): void {
 		this.a('if ', node.condition, ' then ', node.then);
 		if (node.else !== null) {
-			this.a('else ', node.else);
+			this.a(' else ', node.else);
 		}
 	}
 

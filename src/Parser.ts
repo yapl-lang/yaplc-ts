@@ -30,11 +30,12 @@ import {
 	NodeUse,
 	NodeUseAll,
 	NodeIdentifier,
-	NodeTypeName,
 	NodeTypeReference,
 	NodeNamedTypeReference,
 	NodeLambdaTypeReference,
 	NodeArrayTypeReference,
+	NodeGenericTypeReference,
+	NodeGenericParameter,
 	NodeExpression,
 	NodeDefinitionModifier,
 	NodeDefinition,
@@ -349,19 +350,7 @@ export default class Parser {
 		return null;
 	}
 
-	protected parseTypeName(): NodeTypeName | null {
-		const name = this.takeValue(TokenIdentifier) || this.takeValue({ type: TokenKeyword, value: <string[]>[
-			// TODO: Add keywords that are types
-		]});
-		if (name !== null) {
-			return new NodeTypeName({
-				name: name,
-			});
-		}
-		return null;
-	}
-
-	protected parseTypeRef(): NodeTypeReference | null {
+	protected parseTypeRef(isDefinition: boolean = false): NodeTypeReference | null {
 		if (this.is({ type: TokenKeyword, value: 'fun'} )) {
 			const func = this.doParse(this.parseFun, true, false);
 			if (func === null) {
@@ -372,10 +361,13 @@ export default class Parser {
 			});
 		}
 		if (this.is({ type: TokenPunctuation, value: '['})) {
+			if (isDefinition) {
+				throw this.error('Type definition should not be array');
+			}
 			const dimensions = this.delimited(() => this.parseExpression(),
 				{type: TokenPunctuation, value: '['},
 				{type: TokenPunctuation, value: ','},
-				{type: TokenPunctuation, value: ']'})
+				{type: TokenPunctuation, value: ']'});
 			const nextType = this.doParse(this.parseTypeRef);
 			if (nextType === null) {
 				throw this.error('Type expected');
@@ -385,14 +377,46 @@ export default class Parser {
 				dimensions
 			});
 		}
-		const type = this.doParse(this.parseTypeName);
-		if (type !== null) {
-			// TODO: Parse things like generics(templates)
+		if (this.is({ type: TokenOperator, value: '<' })) {
+			const parameters = this.delimited(() => this.parseGenericParameter(isDefinition),
+				{type: TokenOperator, value: '<'},
+				{type: TokenPunctuation, value: ','},
+				{type: TokenOperator, value: '>'});
+			const nextType = this.doParse(this.parseTypeRef);
+			if (nextType === null) {
+				throw this.error('Type expected');
+			}
+			return new NodeGenericTypeReference({
+				target: nextType,
+				parameters: parameters
+			});
+		}
+		const name = this.takeValue(TokenIdentifier) || this.takeValue({ type: TokenKeyword, value: <string[]>[
+			// TODO: Add keywords that are types
+		]});
+		if (name !== null) {
 			return new NodeNamedTypeReference({
-				name: type,
+				name: name,
 			});
 		}
 		return null;
+	}
+
+	protected parseGenericParameter(isDefinition: boolean = false): NodeGenericParameter | null {
+		const type = this.doParse(this.parseTypeRef);
+		if (type === null) {
+			return null;
+		}
+		if (isDefinition && !(type instanceof NodeNamedTypeReference)) {
+			this.error('Generic parameter should be just name');
+		}
+		const def = isDefinition
+			? (this.take({ type: TokenOperator, value: '=' }) ? this.doParse(this.parseTypeRef) : null)
+			: null;
+		return new NodeGenericParameter({
+			target: type,
+			default: def
+		});
 	}
 
 	// Root-level nodes parsers
@@ -460,8 +484,8 @@ export default class Parser {
 		});
 	}
 
-	protected parseFun(expression: boolean = false, hasBody: boolean = true): NodeFunction | null {
-		if (this.take({ type: TokenKeyword, value: 'fun' })) {
+	protected parseFun(expression: boolean = false, hasBody: boolean = true, ignoreKw: boolean = false): NodeFunction | null {
+		if (ignoreKw || this.take({ type: TokenKeyword, value: 'fun' })) {
 			let name = this.doParse(this.parseIdentifier);
 			if (!expression && name === null) {
 				this.error('Function name expected');
@@ -473,11 +497,11 @@ export default class Parser {
 				{type: TokenPunctuation, value: '('},
 				{type: TokenPunctuation, value: ','},
 				{type: TokenPunctuation, value: ')'}, true, true);
-			const returns = this.take({ type: TokenOperator, value: ':' }) ? this.delimited(this.parseTypeRef,
+			const returns = this.take({ type: TokenOperator, value: ':' }) ? this.delimited(() => this.parseTypeRef(),
 				{type: TokenPunctuation, value: '('},
 				{type: TokenPunctuation, value: ','},
 				{type: TokenPunctuation, value: ')'}, true, true) : [];
-			this.take({ type: TokenOperator, value: '=' });
+			hasBody && this.take({ type: TokenOperator, value: '=' });
 			return new NodeFunction({
 				name: name,
 				arguments: args,
@@ -502,7 +526,7 @@ export default class Parser {
 
 	protected parseType<T extends NodeType>(constructor: {new(init?: Partial<NodeType>): T}, before: string, header?: (node: T) => void): T | null {
 		if (this.take({ type: TokenKeyword, value: before })) {
-			const name = this.doParse(this.parseTypeName);
+			const name = this.doParse(this.parseTypeRef, true);
 			if (name === null) {
 				throw this.error('Type name expected');
 			}
@@ -518,15 +542,25 @@ export default class Parser {
 
 	protected parseClass(): NodeClass | null {
 		return this.parseType(NodeClass, 'class', node => {
+			if (this.is({ type: TokenPunctuation, value: '(' })) {
+				node.primaryConstructor = this.doParse(this.parseFun, true, false, true);
+			} else {
+				node.primaryConstructor = null;
+			}
+
 			if (this.take({ type: TokenKeyword, value: 'extends' })) {
 				node.superclass = this.doParse(this.parseTypeRef);
 				if (this.is({ type: TokenPunctuation, value: ',' })) {
 					throw this.error('Class cannot have multiple superclasses');
 				}
+			} else {
+				node.superclass = null;
 			}
 
 			if (this.take({ type: TokenKeyword, value: 'implements' })) {
-				node.superinterfaces = this.delimited(this.parseTypeRef, null, { type: TokenPunctuation, value: ',' });
+				node.superinterfaces = this.delimited(() => this.parseTypeRef(), null, { type: TokenPunctuation, value: ',' });
+			} else {
+				node.superinterfaces = [];
 			}
 		});
 	}
@@ -534,7 +568,9 @@ export default class Parser {
 	protected parseInterface(): NodeInterface | null {
 		return this.parseType(NodeInterface, 'interface', node => {
 			if (this.take({ type: TokenKeyword, value: 'extends' })) {
-				node.superinterfaces = this.delimited(this.parseTypeRef, null, { type: TokenPunctuation, value: ',' });
+				node.superinterfaces = this.delimited(() => this.parseTypeRef(), null, { type: TokenPunctuation, value: ',' });
+			} else {
+				node.superinterfaces = [];
 			}
 		});
 	}

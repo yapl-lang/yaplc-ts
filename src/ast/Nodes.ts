@@ -20,12 +20,6 @@ export class NodeUseAll extends BaseNode<NodeUseAll> {
 	package: string;
 }
 
-export class NodeTypeName extends BaseNode<NodeTypeName> {
-	type = 'typename';
-
-	name: string;
-}
-
 export class NodeIdentifier extends BaseNode<NodeIdentifier> {
 	type = 'id';
 	name: string;
@@ -36,7 +30,7 @@ export abstract class NodeTypeReference<Self extends Node = Node> extends BaseNo
 
 export class NodeNamedTypeReference extends NodeTypeReference<NodeNamedTypeReference> {
 	type = 'named-typeref';
-	name: NodeTypeName;
+	name: string;
 }
 
 export class NodeLambdaTypeReference extends NodeTypeReference<NodeLambdaTypeReference> {
@@ -50,6 +44,19 @@ export class NodeArrayTypeReference extends NodeTypeReference<NodeArrayTypeRefer
 	dimensions: (NodeExpression | null)[];
 }
 
+export class NodeGenericTypeReference extends NodeTypeReference<NodeGenericTypeReference> {
+	type = 'generic-typeref';
+	target: NodeTypeReference;
+	parameters: NodeGenericParameter[];
+}
+
+export class NodeGenericParameter extends BaseNode<NodeGenericParameter> {
+	type = 'generic-parameter';
+	
+	target: NodeTypeReference;
+	default: NodeTypeReference | null;
+}
+
 export abstract class NodeExpression<Self extends Node = Node> extends BaseNode<Self> {
 }
 
@@ -61,7 +68,7 @@ export class NodeDefinitionModifier extends BaseNode<NodeDefinitionModifier> {
 
 export abstract class NodeDefinition<Self extends Node = Node> extends NodeExpression<Self> {
 	modifiers: NodeDefinitionModifier[];
-	name: NodeTypeName | null;
+	name: NodeTypeReference | null;
 }
 
 export abstract class BaseNodeVal<Self extends Node = Node> extends NodeDefinition<Self> {
@@ -99,6 +106,7 @@ export abstract class NodeType<Self extends Node = Node> extends NodeDefinition<
 export class NodeClass extends NodeType<NodeClass> {
 	type = 'class';
 
+	primaryConstructor: NodeFunction | null;
 	superclass: NodeTypeReference | null;
 	superinterfaces: NodeTypeReference[];
 }

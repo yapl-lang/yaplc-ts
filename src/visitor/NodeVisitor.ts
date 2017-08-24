@@ -15,9 +15,9 @@ export abstract class NodeCompactVisitor extends NodeVisitor implements NodeComp
 
 export function compactVisit(node: Node, visitor: NodeCompactVisitorInterface) {
 	const methodContainer = <any>visitor;
-	const methodName = this.constructor.name;
+	const methodName = node.constructor.name;
 	if (methodName in methodContainer) {
 		const method = <(node: Node) => void>methodContainer[methodName];
-		method(node);
+		method.call(methodContainer, node);
 	}
 }
