@@ -348,7 +348,7 @@ export default class Parser {
 
 	protected parseTypeRef(isDefinition: boolean = false): NodeTypeReference | null {
 		if (this.is({ type: TokenKeyword, value: 'fun'} )) {
-			const func = this.doParse(this.parseFun, true, false);
+			const func = this.doParse(this.parseFun, false);
 			if (func === null) {
 				throw this.error('Expected function template', this.input.peek(true, 1));
 			}
@@ -480,15 +480,9 @@ export default class Parser {
 		});
 	}
 
-	protected parseFun(expression: boolean = false, hasBody: boolean = true, ignoreKw: boolean = false): NodeFunction | null {
+	protected parseFun(hasBody: boolean = true, ignoreKw: boolean = false): NodeFunction | null {
 		if (ignoreKw || this.take({ type: TokenKeyword, value: 'fun' })) {
 			let name = this.doParse(this.parseIdentifier);
-			if (!expression && name === null) {
-				this.error('Function name expected');
-				name = new NodeIdentifier({
-					name: ''
-				});
-			}
 			const args = this.delimited(this.parseFunArgument,
 				{type: TokenPunctuation, value: '('},
 				{type: TokenPunctuation, value: ','},
@@ -523,9 +517,6 @@ export default class Parser {
 	protected parseType<T extends NodeType>(constructor: {new(init?: Partial<NodeType>): T}, before: string, header?: (node: T) => void): T | null {
 		if (this.take({ type: TokenKeyword, value: before })) {
 			const name = this.doParse(this.parseTypeRef, true);
-			if (name === null) {
-				throw this.error('Type name expected');
-			}
 			const node = new constructor({
 				name: name
 			});
@@ -539,7 +530,7 @@ export default class Parser {
 	protected parseClass(): NodeClass | null {
 		return this.parseType(NodeClass, 'class', node => {
 			if (this.is({ type: TokenPunctuation, value: '(' })) {
-				node.primaryConstructor = this.doParse(this.parseFun, true, false, true);
+				node.primaryConstructor = this.doParse(this.parseFun, false, true);
 			} else {
 				node.primaryConstructor = null;
 			}
@@ -682,9 +673,9 @@ export default class Parser {
 				name: identifier
 			});
 		}
-		const fun = this.doParse(this.parseFun, true);
-		if (fun !== null) {
-			return fun;
+		const def = this.parseOf(this.parseDefinition);
+		if (def !== null) {
+			return def;
 		}
 		const ifnode = this.doParse(this.parseIf);
 		if (ifnode !== null) {
