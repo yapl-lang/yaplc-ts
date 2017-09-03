@@ -53,6 +53,7 @@ export class TokenModifier extends ValueToken<TokenModifier> {
 		'public',
 
 		'final',
+		'export',
 		'abstract',
 		'const',
 		'data',
