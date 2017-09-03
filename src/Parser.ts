@@ -71,10 +71,6 @@ class TokenTemplate<T extends Token = Token, Value = string> {
 			return template.name;
 		}
 
-		template instanceof Function ? template.name : (template.value
-				? (template.value instanceof Array ? template.value: [template.value]).map(val => `'${val}'`).join(' or ')
-				: template.constructor.name)
-
 		return [
 			template.type ? 'Token ' + template.type.name : null,
 			template.value ? ('Value ' + (template.value instanceof Array ? template.value.join(' or ') : template.value)) : null,
