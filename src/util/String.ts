@@ -46,6 +46,6 @@ export default class String {
 	}
 
 	static escape(str: string): string {
-		return str.replace(/\r\n\t\'\"\\/g, (unused, c) => '\\' + c);
+		return str.replace(/\r\n\t'"\\/g, (unused, c) => '\\' + c);
 	}
 }

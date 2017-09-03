@@ -1,6 +1,5 @@
 import * as assert from 'assert';
 import CharStream from '../src/CharStream';
-import TokenStream from '../src/TokenStream';
 
 const TestCode = 'package something; 5 * 10;';
 
