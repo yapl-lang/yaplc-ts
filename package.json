@@ -6,15 +6,19 @@
 	"scripts": {
 		"build": "tsc -p tsconfig.json",
 		"watch": "tsc --watch -p tsconfig.json",
-		"test": "mocha out/test"
+		"test": "mocha out/test",
+		"mytest": "mocha out/test/MyTest.js"
 	},
 	"author": "YAPL",
 	"license": "GPL-3.0",
 	"devDependencies": {
+		"@types/clone": "^0.1.30",
 		"@types/mocha": "^2.2.42",
 		"@types/node": "^8.0.20",
 		"mocha": "^3.5.0",
 		"typescript": "^2.4.2"
 	},
-	"dependencies": {}
+	"dependencies": {
+		"clone": "^2.1.1"
+	}
 }
