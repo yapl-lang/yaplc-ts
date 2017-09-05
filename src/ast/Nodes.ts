@@ -5,7 +5,7 @@ export class NodePackage extends BaseNode<NodePackage> {
 	type = 'package';
 
 	package: string | null;
-	body: NodeDefinition[];
+	body: (NodeUse | NodeUseAll | NodeDefinition)[];
 }
 
 export class NodeUse extends BaseNode<NodeUse> {

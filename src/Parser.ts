@@ -420,7 +420,7 @@ export default class Parser {
 		const pack = this.take({ type: TokenKeyword, value: 'package' }) ? this.takeDottedId() : null;
 		return new NodePackage({
 			package: pack,
-			body: this.while<Node>(this.parseUse, this.parseDefinition),
+			body: <(NodeUse | NodeUseAll | NodeDefinition)[]>this.while<Node>(this.parseUse, this.parseDefinition),
 		});
 	}
 
@@ -493,6 +493,7 @@ export default class Parser {
 				{type: TokenPunctuation, value: ')'}, true, true) : [];
 			hasBody && this.take({ type: TokenOperator, value: '=' });
 			return new NodeFunction({
+				modifiers: [],
 				name: name,
 				arguments: args,
 				returns: returns,
